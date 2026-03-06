@@ -69,39 +69,29 @@ def main():
         match_reference_implementation=args.match_ref,
     ).fit(D)
     mst_hdb = np.asarray(ref._min_spanning_tree, dtype=np.float64)
+    mst_hdb = mst_hdb[np.argsort(mst_hdb[:, 2], kind="mergesort")]
     t5 = time.time()
     print(f"HDBSCAN reference done in {t5 - t4:.2f}s")
 
     # --- Comparação MST: arestas + pesos ---
     base = n
-    print(mst_hdb)
-    print(mst_core)
 
-    def edge_keys(arr: np.ndarray, n: int) -> set[int]:
-        u = arr[:, 0].astype(np.int64, copy=False)
-        v = arr[:, 1].astype(np.int64, copy=False)
-        b = np.maximum(u, v)
-        s = np.minimum(u, v)
-        return set((b * n + s).tolist())
+    d_hdb = {}
+    for hdb in core_sg:
+        max_val = max(hdb[:2])
+        min_val = min(hdb[:2])
+        if max_val not in d_hdb:
+            d_hdb[max_val] = {}
+        d_hdb[max_val][min_val] = [hdb[2]]
+    a = 0
+    for core in mst_hdb:
+        max_val = max(core[:2])
+        min_val = min(core[:2])
+        try:
+            d_hdb[max_val][min_val].append(core[2])
+        except:
+            a += 1
 
-    # mst_ref = MST do HDBSCAN com min_samples=k_max
-    # core_sg = grafo antes do Kruskal final
-
-    ref_keys = edge_keys(mst_hdb[:, :2], n)
-    core_graph_keys = edge_keys(core_sg[:, :2], n)
-
-    missing_from_graph = ref_keys - core_graph_keys
-    print("missing from core graph:", len(missing_from_graph))
-
-    u = mst_hdb[:, 0].astype(np.int64, copy=False)
-    v = mst_hdb[:, 1].astype(np.int64, copy=False)
-
-    w_expected = np.maximum(np.maximum(core_k[u], core_k[v]), D[u, v])
-    w_ref = mst_hdb[:, 2]
-
-    print("max diff ref vs formula:", np.max(np.abs(w_ref - w_expected)))
-    print("mean diff ref vs formula:", np.mean(np.abs(w_ref - w_expected)))
-    print("num mismatches:", np.sum(~np.isclose(w_ref, w_expected, atol=1e-10, rtol=1e-8)))
 
     ref_key, ref_w = _mst_keys_and_weights(mst_hdb, base)
     core_key, core_w = _mst_keys_and_weights(mst_core, base)

@@ -66,6 +66,7 @@ def build_core_sg_from_data(
     D = np.ascontiguousarray(D, dtype=pairwise_dtype)
     np.fill_diagonal(D, 0.0)
 
+
     # ------------------------------------------------------------------
     # Separação correta dos papéis:
     # - min_samples_k: parâmetro do HDBSCAN
@@ -122,12 +123,17 @@ def build_core_sg_from_data(
             n_nodes=n,
         )
 
-        # core_sg recebe só as arestas; o peso será sobrescrito no reweight
+        u_min = np.minimum(u, v)
+        v_max = np.maximum(u, v)
+
         mst_tmp = np.empty((mst_orig.shape[0], 3), dtype=np.float64)
-        mst_tmp[:, 0] = u
-        mst_tmp[:, 1] = v
-        mst_tmp[:, 2] = -1.0
+        mst_tmp[:, 0] = u_min
+        mst_tmp[:, 1] = v_max
+        mst_tmp[:, 2] = -1.0  # placeholder
+
         core_sg = np.vstack([knng_to_insert, mst_tmp])
+
+
 
     return core_sg, metric_edges, core_k, D
 

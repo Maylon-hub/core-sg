@@ -73,7 +73,7 @@ def kruskal_mst(edges: np.ndarray, n_nodes: int) -> np.recarray:
     w_all = np.asarray(e[:, 2], dtype=np.float64)
 
     # Ordena por peso (Kruskal)
-    order = np.argsort(w_all, kind="mergesort")
+    order = np.lexsort((v_all, w_all))#np.argsort(w_all, kind="mergesort")
     u_all = u_all[order]
     v_all = v_all[order]
     w_all = w_all[order]
