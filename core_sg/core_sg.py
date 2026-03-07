@@ -1,11 +1,10 @@
 from __future__ import annotations
 import numpy as np
 import hdbscan
-from hdbscan._hdbscan_linkage import label
 from sklearn.metrics import pairwise_distances
 
 from .knn import knn_from_precomputed
-from .edges import build_knng_vectors, add_mst_edges_to_metric_edges
+from .edges import build_knng_vectors, add_mst_edges_to_metric_edges,sort_core_sg
 from .mst_kruskal import kruskal_mst
 from .reweight import reweight_core_sg_mutual_reachability
 
@@ -13,8 +12,8 @@ from .reweight import reweight_core_sg_mutual_reachability
 def hdbscan_reference_mst_original_distance(D: np.ndarray, **kwargs) -> np.ndarray:
     # min_samples=1 => mutual reachability == distância original
     clusterer = hdbscan.HDBSCAN(
-        min_cluster_size=2,          # qualquer >=2 (não importa, você só quer a MST)
-        min_samples=1,
+        min_cluster_size=15,          # qualquer >=2 (não importa, você só quer a MST)
+        min_samples=15,
         metric="precomputed",
         algorithm="generic",
         approx_min_span_tree=False,
@@ -31,7 +30,6 @@ def build_core_sg_from_data(
     *,
     metric: str = "euclidean",
     p: int = 2,
-    include_mst_edges: bool = True,
     pairwise_dtype=np.float64,
     **hdbscan_kwargs,
 ):
@@ -90,55 +88,49 @@ def build_core_sg_from_data(
         k_max=graph_knn_k,
     )
 
-    # core-distance correta do HDBSCAN:
+
     # min_samples conta o próprio ponto, então com diagonal 0
     # o índice correto é min_samples_k - 1
     core_k = np.partition(D, kth=min_samples_k - 1, axis=1)[:, min_samples_k - 1]
     core_k = np.ascontiguousarray(core_k, dtype=np.float64)
 
-    core_exact = np.partition(D, kth=min_samples_k - 1, axis=1)[:, min_samples_k - 1]
-    print("core max diff:", np.max(np.abs(core_k - core_exact)))
-
-    mst_orig = None
-    core_sg = knng_to_insert
-
-    if include_mst_edges:
-        # MST da distância original, não da mutual reachability com k_max
-        mst_orig = hdbscan_reference_mst_original_distance(D, **hdbscan_kwargs)
-
-        u = mst_orig[:, 0].astype(np.int64, copy=False)
-        v = mst_orig[:, 1].astype(np.int64, copy=False)
-
-        print("mst_orig max diff:", np.max(np.abs(mst_orig[:, 2] - D[u, v])))
-
-        # metric_edges deve sempre guardar a distância original D[u,v]
-        mst_for_metric_edges = np.empty((mst_orig.shape[0], 3), dtype=np.float64)
-        mst_for_metric_edges[:, 0] = u
-        mst_for_metric_edges[:, 1] = v
-        mst_for_metric_edges[:, 2] = D[u, v]
-
-        metric_edges = add_mst_edges_to_metric_edges(
-            metric_edges,
-            mst_for_metric_edges,
-            n_nodes=n,
-        )
-
-        u_min = np.minimum(u, v)
-        v_max = np.maximum(u, v)
-
-        mst_tmp = np.empty((mst_orig.shape[0], 3), dtype=np.float64)
-        mst_tmp[:, 0] = u_min
-        mst_tmp[:, 1] = v_max
-        mst_tmp[:, 2] = -1.0  # placeholder
-
-        core_sg = np.vstack([knng_to_insert, mst_tmp])
+    #core_exact = np.partition(D, kth=min_samples_k - 1, axis=1)[:, min_samples_k - 1]
+    #print("core max diff:", np.max(np.abs(core_k - core_exact)))
 
 
+    # MST da distância original, não da mutual reachability com k_max
+    mst_orig = hdbscan_reference_mst_original_distance(D, **hdbscan_kwargs)
+
+    u = mst_orig[:, 0].astype(np.int64, copy=False)
+    v = mst_orig[:, 1].astype(np.int64, copy=False)
+
+    # metric_edges deve sempre guardar a distância original D[u,v]
+    mst_for_metric_edges = np.empty((mst_orig.shape[0], 3), dtype=np.float64)
+    mst_for_metric_edges[:, 0] = u
+    mst_for_metric_edges[:, 1] = v
+    mst_for_metric_edges[:, 2] = D[u, v]
+
+    metric_edges = add_mst_edges_to_metric_edges(
+        metric_edges,
+        mst_for_metric_edges,
+        n_nodes=n,
+    )
+
+    u_min = np.minimum(u, v)
+    v_max = np.maximum(u, v)
+
+    mst_tmp = np.empty((mst_orig.shape[0], 3), dtype=np.float64)
+    mst_tmp[:, 0] = u_min
+    mst_tmp[:, 1] = v_max
+    mst_tmp[:, 2] = -1.0  # placeholder
+
+    core_sg = np.vstack([knng_to_insert, mst_tmp])
+    core_sg = sort_core_sg(core_sg)
 
     return core_sg, metric_edges, core_k, D
 
 
-def mst_and_single_linkage_from_core_sg(
+def mst_from_core_sg(
     core_sg: np.ndarray,
     metric_edges: np.ndarray,
     core_k: np.ndarray,
@@ -157,9 +149,10 @@ def mst_and_single_linkage_from_core_sg(
         n_nodes=n_nodes,
     )
 
+
     mst_rec = kruskal_mst(weighted, n_nodes=n_nodes)
     mst_arr = np.column_stack([mst_rec.u, mst_rec.v, mst_rec.distance]).astype(np.float64, copy=False)
     mst_arr = mst_arr[np.argsort(mst_arr[:, 2], kind="mergesort")]
 
-    slt = label(mst_arr)
-    return mst_arr, slt
+
+    return mst_arr

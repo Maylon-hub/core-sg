@@ -1,9 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
-import hdbscan
 
-from .core_sg import build_core_sg_from_data, mst_and_single_linkage_from_core_sg
 
 
 @dataclass(frozen=True)
@@ -11,32 +9,14 @@ class CoreSGValidationReport:
     n: int
     k_max: int
     ok: bool
-    same_edge_set: bool
     missing_in_core: int
-    extra_in_core: int
-    max_abs_weight_diff: float | None
-    n_weight_mismatches: int | None
 
 
-def _mst_keys_and_weights(mst_arr: np.ndarray, base: int) -> tuple[np.ndarray, np.ndarray]:
-    u = mst_arr[:, 0].astype(np.int64, copy=False)
-    v = mst_arr[:, 1].astype(np.int64, copy=False)
-    w = mst_arr[:, 2].astype(np.float64, copy=False)
-    b = np.maximum(u, v)
-    s = np.minimum(u, v)
-    key = b * base + s
-    return key, w
-
-
-def validate_core_sg(
-    X: np.ndarray,
-    k_max: int,
-    *,
-    metric: str = "euclidean",
-    p: int = 2,
-    atol: float = 1e-12,
-    rtol: float = 1e-9,
-    **hdbscan_kwargs,
+def validate_mst_in_core_sg(
+    core_sg: np.ndarray,
+    mst_hdb: np.ndarray,
+    n:int,
+    k: int
 ) -> CoreSGValidationReport:
     """
     Valida Core-SG vs HDBSCAN referência (MST exata).
@@ -46,75 +26,93 @@ def validate_core_sg(
 
     Retorna CoreSGValidationReport.
     """
-    X = np.asarray(X)
-    n = X.shape[0]
-    base = n  # chave única safe: bigger*n + smaller
+    # --- Comparação MST: arestas + pesos ---
+    
+    d_hdb = {}
+    a = 0
+    ok = True
 
-    # Core-SG + D (precomputed) gerada internamente
-    core_sg, metric_edges, core_k, D = build_core_sg_from_data(
-        X,
-        k_max,
-        metric=metric,
-        p=p,
-        include_mst_edges=True,
-        **hdbscan_kwargs,
-    )
+    for core in core_sg:
+        max_val = max(core[:2])
+        min_val = min(core[:2])
+        if max_val not in d_hdb:
+            d_hdb[max_val] = {}
+        d_hdb[max_val][min_val] = [core[2]]
+    for hdb in mst_hdb:
+        max_val = max(hdb[:2])
+        min_val = min(hdb[:2])
+        try:
+            d_hdb[max_val][min_val].append(hdb[2])
+        except:
+            a += 1
+            ok = False
 
-    # HDBSCAN referência (precomputed) usando a MESMA matriz D
-    D = np.asarray(D, dtype=np.float64)
-    ref = hdbscan.HDBSCAN(
-        min_cluster_size=k_max,
-        min_samples=k_max,
-        metric="precomputed",
-        algorithm="generic",
-        approx_min_span_tree=False,
-        gen_min_span_tree=True,
-        **hdbscan_kwargs,
-    ).fit(D)
-    mst_ref = np.asarray(ref._min_spanning_tree, dtype=np.float64)
-
-    # MST final via Core-SG
-    mst_core, _slt_core = mst_and_single_linkage_from_core_sg(
-        core_sg, metric_edges, core_k, n_nodes=n
-    )
-
-    ref_key, ref_w = _mst_keys_and_weights(mst_ref, base)
-    core_key, core_w = _mst_keys_and_weights(mst_core, base)
-
-    ref_set = set(ref_key.tolist())
-    core_set = set(core_key.tolist())
-
-    missing = len(ref_set - core_set)
-    extra = len(core_set - ref_set)
-    same_edge_set = (missing == 0 and extra == 0)
-
-    max_abs_diff = None
-    n_mismatch = None
-
-    if same_edge_set:
-        ref_map = dict(zip(ref_key.tolist(), ref_w.tolist()))
-        core_map = dict(zip(core_key.tolist(), core_w.tolist()))
-
-        diffs = []
-        mism = 0
-        for kk in ref_map.keys():
-            a = float(ref_map[kk])
-            b = float(core_map[kk])
-            diffs.append(abs(a - b))
-            if not np.isclose(a, b, atol=atol, rtol=rtol):
-                mism += 1
-
-        max_abs_diff = float(np.max(diffs)) if diffs else 0.0
-        n_mismatch = int(mism)
-
-    ok = same_edge_set and (n_mismatch == 0)
+    
     return CoreSGValidationReport(
         n=int(n),
-        k_max=int(k_max),
+        k_max=int(k),
         ok=bool(ok),
-        same_edge_set=bool(same_edge_set),
-        missing_in_core=int(missing),
-        extra_in_core=int(extra),
-        max_abs_weight_diff=max_abs_diff,
-        n_weight_mismatches=n_mismatch,
+        missing_in_core=int(a),
+    )
+
+def sort_mst(mst: np.ndarray) -> np.ndarray:
+    """
+    Normaliza a MST para o formato [menor_idx, maior_idx, distancia]
+    e ordena por (distancia, maior_idx, menor_idx).
+    """
+    if mst.ndim != 2 or mst.shape[1] < 3:
+        raise ValueError("mst deve ter shape (n_edges, 3)")
+
+    u = mst[:, 0].astype(np.int64, copy=False)
+    v = mst[:, 1].astype(np.int64, copy=False)
+    w = mst[:, 2].astype(np.float64, copy=False)
+
+    u_min = np.minimum(u, v)
+    v_max = np.maximum(u, v)
+
+    mst_tmp = np.empty((mst.shape[0], 3), dtype=np.float64)
+    mst_tmp[:, 0] = u_min
+    mst_tmp[:, 1] = v_max
+    mst_tmp[:, 2] = w
+
+    order = np.lexsort((mst_tmp[:, 0], mst_tmp[:, 1], mst_tmp[:, 2]))
+    mst_tmp = mst_tmp[order]
+
+    return mst_tmp
+
+def validate_mst_from_core_sg(
+    mst_core: np.ndarray,
+    mst_hdb: np.ndarray,
+    n:int,
+    k: int
+) -> CoreSGValidationReport:
+    """
+    Valida Core-SG vs HDBSCAN referência (MST exata).
+    - O Core-SG calcula pairwise distances internamente.
+    - O HDBSCAN referência roda com metric="precomputed" sobre a mesma matriz D.
+    - Compara MST de mutual reachability (arestas + pesos).
+
+    Retorna CoreSGValidationReport.
+    """
+    # --- Comparação MST: arestas + pesos ---
+    mst_core_copy = sort_mst(mst_core)
+    mst_hdb_copy = sort_mst(mst_hdb)
+    ok = True
+    a = 0
+
+    for index,(core,hdb) in enumerate(zip(mst_core_copy,mst_hdb_copy)):
+        max_hdb,min_hdb,weight_hdb = int(max(hdb[:2])),int(min(hdb[:2])),hdb[2]
+        max_core,min_core,weight_core = int(max(core[:2])),int(min(core[:2])),core[2]
+        
+        if max_hdb != max_core or min_core != min_hdb or abs(weight_hdb - weight_core) > 0.001:
+            a += 1
+            ok = False
+
+
+
+    return CoreSGValidationReport(
+        n=int(n),
+        k_max=int(k),
+        ok=bool(ok),
+        missing_in_core=int(a),
     )

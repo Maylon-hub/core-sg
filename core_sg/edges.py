@@ -1,6 +1,30 @@
 from __future__ import annotations
 import numpy as np
 
+def sort_core_sg(core_sg: np.ndarray) -> np.ndarray:
+    """
+    Normaliza o Core-SG para o formato [menor_idx, maior_idx, distancia]
+    e ordena por (distancia, maior_idx, menor_idx).
+    """
+    if core_sg.ndim != 2 or core_sg.shape[1] < 3:
+        raise ValueError("mst deve ter shape (n_edges, 3)")
+
+    u = core_sg[:, 0].astype(np.int64, copy=False)
+    v = core_sg[:, 1].astype(np.int64, copy=False)
+    w = core_sg[:, 2].astype(np.float64, copy=False)
+
+    u_min = np.minimum(u, v)
+    v_max = np.maximum(u, v)
+
+    core_sg_tmp = np.empty((core_sg.shape[0], 3), dtype=np.float64)
+    core_sg_tmp[:, 0] = u_min
+    core_sg_tmp[:, 1] = v_max
+    core_sg_tmp[:, 2] = w
+
+    order = np.lexsort((core_sg_tmp[:, 0], core_sg_tmp[:, 1], core_sg_tmp[:, 2]))
+    core_sg_tmp = core_sg_tmp[order]
+
+    return core_sg_tmp
 
 def build_knng_vectors(
     idxs_arr: np.ndarray,
