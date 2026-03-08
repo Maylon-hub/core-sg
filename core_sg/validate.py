@@ -105,6 +105,8 @@ def validate_mst_from_core_sg(
         max_core,min_core,weight_core = int(max(core[:2])),int(min(core[:2])),core[2]
         
         if max_hdb != max_core or min_core != min_hdb or abs(weight_hdb - weight_core) > 0.001:
+            print(core)
+            print(hdb)
             a += 1
             ok = False
 

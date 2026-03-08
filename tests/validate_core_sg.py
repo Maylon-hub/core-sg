@@ -35,7 +35,7 @@ def main():
 
     # --- Build Core-SG (calculando pairwise dentro) ---
     t0 = time.time()
-    core_sg, metric_edges, core_k, D = build_core_sg_from_data(
+    core_sg, metric_edges, core_k_list, D = build_core_sg_from_data(
         X,
         k_max=k,
         metric="euclidean",

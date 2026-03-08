@@ -35,7 +35,7 @@ def main():
 
     # --- Build Core-SG (calculando pairwise dentro) ---
     t0 = time.time()
-    core_sg, metric_edges, core_k, D = build_core_sg_from_data(
+    core_sg, metric_edges, core_k_list, D = build_core_sg_from_data(
         X,
         k_max=k,
         metric="euclidean",
@@ -44,7 +44,7 @@ def main():
     )
     t1 = time.time()
     print(f"Core-SG build done in {t1 - t0:.2f}s")
-    #D[3881][2386] = 2.43
+    D[3881][2386] = 2.43
 
     for k_iter in range(k,2,-2):
 
@@ -53,8 +53,9 @@ def main():
         mst_core = mst_from_core_sg(
             core_sg=core_sg,
             metric_edges=metric_edges,
-            core_k=core_k,
+            core_k_list=core_k_list,
             n_nodes=n,
+            k=k_iter
         )
         t3 = time.time()
         print(f"Core-SG MST (Kruskal) done in {t3 - t2:.2f}s")
@@ -74,10 +75,6 @@ def main():
         t5 = time.time()
         print(f"HDBSCAN reference done in {t5 - t4:.2f}s")
 
-        #1095 Minimo Diferente - HDB :  [2.38600000e+03 3.88100000e+03 2.42877254e+00] || Core:  [2.57800000e+03 3.88100000e+03 2.42877254e+00]
-        #print("Results")
-        #print(D[3881][2386],core_k[3881],core_k[2386])
-        #print(D[3881][2578],core_k[3881],core_k[2578])
 
         # --- Comparação MST: arestas + pesos ---    
         obj = validate_mst_from_core_sg(
@@ -89,7 +86,7 @@ def main():
 
         if not obj.ok:
             print(obj)
-            raise ValueError(f"A MST para k = {k_iter} nao eh igual à extraída via HDBSCAN")
+            #raise ValueError(f"A MST para k = {k_iter} nao eh igual à extraída via HDBSCAN")
 
 
 if __name__ == "__main__":

@@ -91,11 +91,12 @@ def build_core_sg_from_data(
 
     # min_samples conta o próprio ponto, então com diagonal 0
     # o índice correto é min_samples_k - 1
-    core_k = np.partition(D, kth=min_samples_k - 1, axis=1)[:, min_samples_k - 1]
-    core_k = np.ascontiguousarray(core_k, dtype=np.float64)
+    #core_k = np.partition(D, kth=min_samples_k - 1, axis=1)[:, min_samples_k - 1]
+    #core_k = np.ascontiguousarray(core_k, dtype=np.float64)
 
-    #core_exact = np.partition(D, kth=min_samples_k - 1, axis=1)[:, min_samples_k - 1]
-    #print("core max diff:", np.max(np.abs(core_k - core_exact)))
+    core_k_list = np.partition(D, kth=min_samples_k - 1, axis=1)[:, :min_samples_k]
+    core_k_list = np.sort(core_k_list, axis=1)
+
 
 
     # MST da distância original, não da mutual reachability com k_max
@@ -127,14 +128,15 @@ def build_core_sg_from_data(
     core_sg = np.vstack([knng_to_insert, mst_tmp])
     core_sg = sort_core_sg(core_sg)
 
-    return core_sg, metric_edges, core_k, D
+    return core_sg, metric_edges, core_k_list, D
 
 
 def mst_from_core_sg(
     core_sg: np.ndarray,
     metric_edges: np.ndarray,
-    core_k: np.ndarray,
+    core_k_list: np.ndarray,
     n_nodes: int,
+    k: int
 ):
     """
     Reweight -> Kruskal -> label() (HDBSCAN internal) => single linkage tree.
@@ -142,6 +144,14 @@ def mst_from_core_sg(
       mst_arr: (n-1,3) [u,v,w] ordenado por w
       single_linkage_tree: output do label()
     """
+
+    if k <= 0 or k >= n_nodes:
+        raise ValueError("k_max inválido (precisa 1 <= k_max <= n-1).")
+    if k < 2:
+        raise ValueError("k_max deve ser >= 2 para reproduzir min_samples do HDBSCAN.")
+
+    core_k = core_k_list[:, k - 1]
+    core_k = np.ascontiguousarray(core_k, dtype=np.float64)
     weighted = reweight_core_sg_mutual_reachability(
         core_sg=core_sg,
         core_k=core_k,
