@@ -11,7 +11,7 @@ import hdbscan
 
 from core_sg.core_sg import build_core_sg_from_data, mst_from_core_sg
 
-from core_sg.validate import validate_mst_from_core_sg
+from tests.validate import validate_mst_from_core_sg
 
 def main():
     ap = argparse.ArgumentParser()
@@ -41,10 +41,10 @@ def main():
         metric="euclidean",
         pairwise_dtype=np.float64,
         match_reference_implementation=args.match_ref,
+        test_only=True
     )
     t1 = time.time()
     print(f"Core-SG build done in {t1 - t0:.2f}s")
-    D[3881][2386] = 2.43
 
     for k_iter in range(k,2,-2):
 

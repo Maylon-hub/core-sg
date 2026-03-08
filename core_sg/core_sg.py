@@ -4,9 +4,9 @@ import hdbscan
 from sklearn.metrics import pairwise_distances
 
 from .knn import knn_from_precomputed
-from .edges import build_knng_vectors, add_mst_edges_to_metric_edges,sort_core_sg
+from .edges import build_knng_vectors, add_mst_edges_to_metric_edges
 from .mst_kruskal import kruskal_mst
-from .reweight import reweight_core_sg_mutual_reachability
+from .reweight import reweight_core_sg_mutual_reachability,sort_core_sg
 
 
 def hdbscan_reference_mst_original_distance(D: np.ndarray, **kwargs) -> np.ndarray:
@@ -31,6 +31,7 @@ def build_core_sg_from_data(
     metric: str = "euclidean",
     p: int = 2,
     pairwise_dtype=np.float64,
+    test_only: bool = False,
     **hdbscan_kwargs,
 ):
     """
@@ -64,6 +65,8 @@ def build_core_sg_from_data(
     D = np.ascontiguousarray(D, dtype=pairwise_dtype)
     np.fill_diagonal(D, 0.0)
 
+    if test_only:
+        D = D.round(4)
 
     # ------------------------------------------------------------------
     # Separação correta dos papéis:

@@ -1,4 +1,4 @@
-# python -m tests.validate_core_sg --n 5000 --d 10 --centers 10 --k 15 --match-ref
+# python -m tests.validate_core_sg_weight --n 5000 --d 10 --centers 10 --k 15 --match-ref
 from __future__ import annotations
 
 import argparse
@@ -11,7 +11,9 @@ import hdbscan
 
 from core_sg.core_sg import build_core_sg_from_data
 
-from tests.validate import validate_mst_in_core_sg
+from tests.validate import validate_weights_in_core_sg
+from core_sg.reweight import reweight_core_sg_mutual_reachability
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -45,8 +47,10 @@ def main():
     )
     t1 = time.time()
     print(f"Core-SG build done in {t1 - t0:.2f}s")
+    #D[3881][2386] = 2.43
 
     for k_iter in range(k,2,-2):
+
         # --- HDBSCAN referência (MST mutual reachability) ---
         t4 = time.time()
         ref = hdbscan.HDBSCAN(
@@ -63,10 +67,21 @@ def main():
         t5 = time.time()
         print(f"HDBSCAN reference done in {t5 - t4:.2f}s")
 
+        core_k = core_k_list[:, k_iter - 1]
+        core_k = np.ascontiguousarray(core_k, dtype=np.float64)
+
+        weighted = reweight_core_sg_mutual_reachability(
+            core_sg=core_sg,
+            core_k=core_k,
+            metric_edges=metric_edges,
+            n_nodes=n,
+        )
         # --- Comparação MST: arestas + pesos ---  
-        obj = validate_mst_in_core_sg(
-            core_sg,
+        obj = validate_weights_in_core_sg(
+            weighted,
             mst_hdb,
+            D,
+            core_k,
             n,
             k_iter
         )
