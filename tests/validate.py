@@ -1,6 +1,8 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
+from typing import Any
+
 
 
 
@@ -88,14 +90,14 @@ def validate_mst_from_core_sg(
         max_core,min_core,weight_core = int(max(core[:2])),int(min(core[:2])),core[2]
 
         if max_core not in d_hdb:
-            print("Maximo")
+            #print("Maximo")
             a += 1
         elif min_core not in d_hdb[max_core]:
-            print("Minimo")
-            print(max_core,min_core)
+            #print("Minimo")
+            #print(max_core,min_core)
             a += 1
         elif abs(d_hdb[max_core][min_core] - weight_core) > 0.001:
-            print("Distancia")
+            #print("Distancia")
             a += 1
 
     if a > 0:
@@ -144,14 +146,53 @@ def validate_weights_in_core_sg(
         min_val = min(hdb[:2])
         try:
             if d_hdb[max_val][min_val] != hdb[2]:
-                print(f"Para o HDBSCAN MRD = {hdb[2]}")
-                print(f"Distancia NxN = {D[int(max_val)][int(min_val)]} || Core-Distance_{max_val} = {core_k[int(max_val)]} || Core-Distance_{min_val} = {core_k[int(min_val)]}")
+                #print(f"Para o HDBSCAN MRD = {hdb[2]}")
+                #print(f"Distancia NxN = {D[int(max_val)][int(min_val)]} || Core-Distance_{max_val} = {core_k[int(max_val)]} || Core-Distance_{min_val} = {core_k[int(min_val)]}")
                 a += 1
                 ok = False
         except Exception as e:
             print(e) 
             a += 1
             ok = False
+
+    
+    return CoreSGValidationReport(
+        n=int(n),
+        k_max=int(k),
+        ok=bool(ok),
+        missing_in_core=int(a),
+    )
+
+
+def validate_core_sg_atributtes(
+    atribute: Any,
+    n: int,
+    k: int,
+    condensed: bool = False
+) -> CoreSGValidationReport:
+    """
+    Valida Core-SG vs HDBSCAN referência (MST exata).
+    - O Core-SG calcula pairwise distances internamente.
+    - O HDBSCAN referência roda com metric="precomputed" sobre a mesma matriz D.
+    - Compara MST de mutual reachability (arestas + pesos).
+
+    Retorna CoreSGValidationReport.
+    """
+    # --- Comparação MST: arestas + pesos ---
+    
+   
+    a = 0
+    ok = True
+
+    try:
+        _ = atribute.to_pandas()
+        
+        if not condensed:
+            assert _.shape[0] == n-1
+        else:
+            assert _.shape[0] >= n
+    except:
+        ok = False
 
     
     return CoreSGValidationReport(

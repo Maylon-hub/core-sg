@@ -1,4 +1,4 @@
-# python -m tests.validate_mst_weight --n 5000 --d 10 --centers 10 --k 15 --match-ref
+# python -m tests.validate_mst_weight --n 5000 --d 10 --centers 10 --k 50
 from __future__ import annotations
 
 import argparse
@@ -22,7 +22,6 @@ def main():
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--atol", type=float, default=1e-12)
     ap.add_argument("--rtol", type=float, default=1e-9)
-    ap.add_argument("--match-ref", action="store_true")
     args = ap.parse_args()
 
     n = args.n
@@ -35,19 +34,18 @@ def main():
 
     # --- Build Core-SG (calculando pairwise dentro) ---
     t0 = time.time()
-    core_sg, metric_edges, core_k_list, D = build_core_sg_from_data(
+    core_sg, metric_edges, core_k_list, D,_ = build_core_sg_from_data(
         X,
         k_max=k,
         metric="euclidean",
         pairwise_dtype=np.float64,
-        match_reference_implementation=args.match_ref,
         test_only=True
     )
     t1 = time.time()
     print(f"Core-SG build done in {t1 - t0:.2f}s")
 
     for k_iter in range(k,2,-2):
-
+        
         # --- MST final via Core-SG ---
         t2 = time.time()
         mst_core = mst_from_core_sg(
@@ -68,7 +66,7 @@ def main():
             algorithm="generic",
             approx_min_span_tree=False,
             gen_min_span_tree=True,
-            match_reference_implementation=args.match_ref,
+            match_reference_implementation=True,
         ).fit(D)
         mst_hdb = np.asarray(ref._min_spanning_tree, dtype=np.float64)
         mst_hdb = mst_hdb[np.argsort(mst_hdb[:, 2], kind="mergesort")]
