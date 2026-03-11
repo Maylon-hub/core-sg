@@ -151,7 +151,7 @@ def validate_weights_in_core_sg(
                 a += 1
                 ok = False
         except Exception as e:
-            print(e) 
+            #print(e) 
             a += 1
             ok = False
 

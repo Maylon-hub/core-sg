@@ -1,4 +1,4 @@
-# python -m tests.validate_class_core_sg --n 5000 --d 10 --centers 10 --k 50 
+# python -m tests.validate_class_core_sg_weight --n 5000 --d 10 --centers 10 --k 50 
 from __future__ import annotations
 
 import argparse
@@ -10,7 +10,8 @@ import hdbscan
 
 
 from core_sg.core_sg import CoreSG
-from tests.validate import validate_mst_in_core_sg
+from tests.validate import validate_weights_in_core_sg
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -36,6 +37,7 @@ def main():
     core_sg_.fit(X,k,test_only=True)
 
     for k_iter in range(k,2,-2):
+
         # --- HDBSCAN referência (MST mutual reachability) ---
         t4 = time.time()
         ref = hdbscan.HDBSCAN(
@@ -52,10 +54,14 @@ def main():
         t5 = time.time()
         print(f"HDBSCAN reference done in {t5 - t4:.2f}s")
 
+
+        weighted = core_sg_.get_core_sg_mutual_reachability_distance(k_iter)
         # --- Comparação MST: arestas + pesos ---  
-        obj = validate_mst_in_core_sg(
-            core_sg_._core_sg,
+        obj = validate_weights_in_core_sg(
+            weighted,
             mst_hdb,
+            core_sg_._D,
+            core_sg_.get_core_distance(k_iter),
             n,
             k_iter
         )

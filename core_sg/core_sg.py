@@ -153,10 +153,9 @@ def mst_from_core_sg(
     k: int
 ):
     """
-    Reweight -> Kruskal -> label() (HDBSCAN internal) => single linkage tree.
+    Reweight -> Kruskal -> 
     Retorna:
       mst_arr: (n-1,3) [u,v,w] ordenado por w
-      single_linkage_tree: output do label()
     """
 
     if k <= 0 or k >= n_nodes:
@@ -180,6 +179,35 @@ def mst_from_core_sg(
 
 
     return mst_arr
+
+def core_sg_mutual_reachability_distance( 
+    core_sg: np.ndarray,
+    metric_edges: np.ndarray,
+    core_k_list: np.ndarray,
+    n_nodes: int,
+    k: int
+):
+    """
+    Reweight CoreSG 
+    Retorna:
+      core_sg: (n-1,3) [u,v,w] ordenado por w
+    """
+
+    if k <= 0 or k >= n_nodes:
+        raise ValueError("k_max inválido (precisa 1 <= k_max <= n-1).")
+    if k < 2:
+        raise ValueError("k_max deve ser >= 2 para reproduzir min_samples do HDBSCAN.")
+
+    core_k = core_k_list[:, k - 1]
+    core_k = np.ascontiguousarray(core_k, dtype=np.float64)
+    weighted = reweight_core_sg_mutual_reachability(
+        core_sg=core_sg,
+        core_k=core_k,
+        metric_edges=metric_edges,
+        n_nodes=n_nodes,
+    )
+
+    return weighted
 
 
 def tree_to_labels(
@@ -310,6 +338,19 @@ class CoreSG:
         self._single_linkage_tree = None
         self._min_spanning_tree = None
 
+    def get_core_sg_mutual_reachability_distance(self,k: int):
+        return core_sg_mutual_reachability_distance( 
+            self._core_sg,
+            self._metric_edges,
+            self._core_k_list,
+            self.n,
+            k
+        )
+    def get_core_distance(self,k):
+        core_k = self._core_k_list[:, k - 1]
+        core_k = np.ascontiguousarray(core_k, dtype=np.float64)
+        return core_k
+    
     def _get_tree_to_labels_kwargs(self) -> dict[str, Any]:
         """
         Extract only the keyword arguments supported by `_tree_to_labels`.
@@ -601,7 +642,7 @@ class CoreSG:
             "minimum_spanning_tree_": self._min_spanning_tree_k_max,
         }
 
-    def fit(self, X: np.ndarray, k_max: int) -> "CoreSG":
+    def fit(self, X: np.ndarray, k_max: int,test_only: bool = False) -> "CoreSG":
         """
         Build the Core-SG for a reference value `k_max`.
 
@@ -634,7 +675,8 @@ class CoreSG:
             X,
             k_max=k_max,
             metric=self.metric,
-            p=self.p
+            p=self.p,
+            test_only=test_only
         )
         t1 = time()
 

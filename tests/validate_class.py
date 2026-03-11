@@ -33,7 +33,7 @@ def main():
 
     # --- Build Core-SG (calculando pairwise dentro) ---
     core_sg_ = CoreSG(metric='euclidean',p=2,debug=True,match_reference_implementation=True)
-    core_sg_.fit(X,k)
+    core_sg_.fit(X,k,test_only=True)
 
     for k_iter in range(k,2,-2):
         try:
