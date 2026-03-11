@@ -383,6 +383,7 @@ class CoreSG:
         self.single_linkage_tree_k_max_ = hdb_obj._single_linkage_tree
         self.minimum_spanning_tree_k_max_ = hdb_obj._min_spanning_tree
 
+
     @staticmethod
     def _mst_to_dataframe(mst: np.ndarray) -> pd.DataFrame:
         """
@@ -628,10 +629,11 @@ class CoreSG:
                 "labels_": self.labels_k_max,
                 "probabilities_": self.probabilities_k_max,
                 "cluster_persistence_": self.cluster_persistence_k_max,
-                "condensed_tree_": self.condensed_tree_k_max,
+                "condensed_tree_": self.condensed_tree_k_max_,
                 "single_linkage_tree_": self.single_linkage_tree_k_max_,
                 "minimum_spanning_tree_": self.minimum_spanning_tree_k_max_,
             }
+
 
         return {
             "labels_": self.labels_k_max,

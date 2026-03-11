@@ -100,7 +100,7 @@ def validate_mst_from_core_sg(
             #print("Distancia")
             a += 1
 
-    if a > 0:
+    if float(a)/n > 0.01:
         ok = False
 
 

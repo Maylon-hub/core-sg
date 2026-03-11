@@ -13,24 +13,22 @@ from core_sg.core_sg import build_core_sg_from_data, mst_from_core_sg
 
 from tests.validate import validate_mst_from_core_sg
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--n", type=int, default=5000)
-    ap.add_argument("--d", type=int, default=10)
-    ap.add_argument("--centers", type=int, default=10)
-    ap.add_argument("--k", type=int, default=15)
-    ap.add_argument("--seed", type=int, default=42)
-    ap.add_argument("--atol", type=float, default=1e-12)
-    ap.add_argument("--rtol", type=float, default=1e-9)
-    args = ap.parse_args()
+def test_mst_weights():
+    n = 5000
+    d = 10
+    centers = 10
+    k = 30
+    seed = 42
+    atol = 1e-12
+    rtol = 1e-9
 
-    n = args.n
-    d = args.d
-    k = args.k
-    seed = args.seed
-
-    print(f"Generating synthetic dataset: n={n}, d={d}, centers={args.centers}, seed={seed}")
-    X, _ = make_blobs(n_samples=n, n_features=d, centers=args.centers, random_state=seed)
+    print(f"Generating synthetic dataset: n={n}, d={d}, centers={centers}, seed={seed}")
+    X, _ = make_blobs(
+        n_samples=n,
+        n_features=d,
+        centers=centers,
+        random_state=seed,
+    )
 
     # --- Build Core-SG (calculando pairwise dentro) ---
     t0 = time.time()
@@ -84,8 +82,6 @@ def main():
 
         if not obj.ok:
             print(obj)
-            #raise ValueError(f"A MST para k = {k_iter} nao eh igual à extraída via HDBSCAN")
+            raise ValueError(f"A MST para k = {k_iter} nao eh igual à extraída via HDBSCAN")
 
 
-if __name__ == "__main__":
-    main()

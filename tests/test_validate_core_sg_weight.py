@@ -15,24 +15,22 @@ from tests.validate import validate_weights_in_core_sg
 from core_sg.reweight import reweight_core_sg_mutual_reachability
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--n", type=int, default=5000)
-    ap.add_argument("--d", type=int, default=10)
-    ap.add_argument("--centers", type=int, default=10)
-    ap.add_argument("--k", type=int, default=15)
-    ap.add_argument("--seed", type=int, default=42)
-    ap.add_argument("--atol", type=float, default=1e-12)
-    ap.add_argument("--rtol", type=float, default=1e-9)
-    args = ap.parse_args()
+def test_core_sg_mrd_weights():
+    n = 5000
+    d = 10
+    centers = 10
+    k = 30
+    seed = 42
+    atol = 1e-12
+    rtol = 1e-9
 
-    n = args.n
-    d = args.d
-    k = args.k
-    seed = args.seed
-
-    print(f"Generating synthetic dataset: n={n}, d={d}, centers={args.centers}, seed={seed}")
-    X, _ = make_blobs(n_samples=n, n_features=d, centers=args.centers, random_state=seed)
+    print(f"Generating synthetic dataset: n={n}, d={d}, centers={centers}, seed={seed}")
+    X, _ = make_blobs(
+        n_samples=n,
+        n_features=d,
+        centers=centers,
+        random_state=seed,
+    )
 
     # --- Build Core-SG (calculando pairwise dentro) ---
     t0 = time.time()
@@ -89,5 +87,3 @@ def main():
             raise ValueError(f"A MST para k = {k_iter} nao esta contida no Core-SG")
 
 
-if __name__ == "__main__":
-    main()
