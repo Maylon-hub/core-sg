@@ -1,7 +1,6 @@
 from __future__ import annotations
 import numpy as np
 
-
 def build_knng_vectors(
     idxs_arr: np.ndarray,
     distance_arr: np.ndarray,

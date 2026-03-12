@@ -55,11 +55,6 @@ def kruskal_mst(edges: np.ndarray, n_nodes: int) -> np.recarray:
       recarray com dtype [('u', int64), ('v', int64), ('distance', float64)]
       e tamanho n_nodes-1.
 
-    Melhorias de performance vs versão anterior:
-    - Não usa atribuição por record (mst[m].campo = ...), que é lenta.
-    - Prealoca 3 vetores (u,v,w) e preenche diretamente.
-    - Minimiza casts/conversões dentro do loop.
-    - Mantém referências locais para reduzir overhead de lookup.
     """
     e = np.asarray(edges)
     if e.ndim != 2 or e.shape[1] < 3:
@@ -73,7 +68,8 @@ def kruskal_mst(edges: np.ndarray, n_nodes: int) -> np.recarray:
     w_all = np.asarray(e[:, 2], dtype=np.float64)
 
     # Ordena por peso (Kruskal)
-    order = np.argsort(w_all, kind="mergesort")
+    order = np.lexsort((u_all,v_all, w_all))
+    #order = np.argsort(w_all, kind="mergesort") #-> Gera Inconsistência com o HDBSCAN referencia
     u_all = u_all[order]
     v_all = v_all[order]
     w_all = w_all[order]

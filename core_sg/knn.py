@@ -26,7 +26,7 @@ def knn_from_precomputed(D: np.ndarray, k: int, *, include_self: bool = False) -
     dist_part = np.take_along_axis(Dwork, idx_part, axis=1)
 
     # Ordena apenas os k selecionados
-    order = np.argsort(dist_part, axis=1)
+    order = np.argsort(dist_part, axis=1, kind="mergesort")
     idx = np.take_along_axis(idx_part, order, axis=1).astype(np.int64, copy=False)
     dist = np.take_along_axis(dist_part, order, axis=1).astype(np.float64, copy=False)
     return idx, dist
