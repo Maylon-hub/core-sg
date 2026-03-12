@@ -46,24 +46,25 @@ def build_core_sg_from_data(
     test_only: bool = False,
 ):
     """
-    Recebe X (n, d), calcula pairwise distances D (n, n) internamente e constrói:
+    Gets X (n, d), calculates pairwise distances D (n, n) and build:
       - core distances
-      - kNNG vetorizado
+      - kNNG vetorized
       - metric_edges
-      - (opcional) inclui arestas da MST da distância original no metric_edges e no core_sg
+      - Includes MST edges in metric_edges 
+      - Concatenate kNNG with MST MRD, building core-sg
 
-    Retorna:
+    Returns:
       core_sg, metric_edges, core_k, mst_orig, D
     """
     X = np.asarray(X)
     n = X.shape[0]
 
     if n <= 1:
-        raise ValueError("X precisa ter ao menos 2 pontos.")
+        raise ValueError("X needs to have shape > 1")
     if k_max <= 0 or k_max >= n:
-        raise ValueError("k_max inválido (precisa 1 <= k_max <= n-1).")
+        raise ValueError("k_max invalid (1 <= k_max <= n-1).")
     if k_max < 2:
-        raise ValueError("k_max deve ser >= 2 para reproduzir min_samples do HDBSCAN.")
+        raise ValueError("k_max must be >= 2 to use HDBSCAN.")
 
     # ---- pairwise distances dentro da função ----
     if metric == "minkowski":
@@ -185,18 +186,19 @@ def core_sg_mutual_reachability_distance(
     metric_edges: np.ndarray,
     core_k_list: np.ndarray,
     n_nodes: int,
+    k_max: int,
     k: int
 ):
     """
     Reweight CoreSG 
-    Retorna:
-      core_sg: (n-1,3) [u,v,w] ordenado por w
+    Returns:
+      core_sg: (n-1,3) [u,v,w] order by w
     """
 
-    if k <= 0 or k >= n_nodes:
-        raise ValueError("k_max inválido (precisa 1 <= k_max <= n-1).")
+    if k <= 0 or k > k_max:
+        raise ValueError("k invalid (1 <= k <= k_max).")
     if k < 2:
-        raise ValueError("k_max deve ser >= 2 para reproduzir min_samples do HDBSCAN.")
+        raise ValueError("k must be >= 2.")
 
     core_k = core_k_list[:, k - 1]
     core_k = np.ascontiguousarray(core_k, dtype=np.float64)
@@ -344,6 +346,7 @@ class CoreSG:
             self._metric_edges,
             self._core_k_list,
             self.n,
+            self.k_max,
             k
         )
     def get_core_distance(self,k):
@@ -494,6 +497,10 @@ class CoreSG:
     @single_linkage_tree_.setter
     def single_linkage_tree_(self, value):
         self._single_linkage_tree = value
+    
+
+    def set_debug(self, value):
+        self.debug = value
 
     @property
     def single_linkage_tree_k_max_(self):

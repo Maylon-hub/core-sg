@@ -3,11 +3,11 @@ import numpy as np
 
 def sort_core_sg(core_sg: np.ndarray) -> np.ndarray:
     """
-    Normaliza o Core-SG para o formato [menor_idx, maior_idx, distancia]
-    e ordena por (distancia, maior_idx, menor_idx).
+    CorSG to format [menor_idx, maior_idx, distancia]
+    SOrting By (distancia, maior_idx, menor_idx).
     """
     if core_sg.ndim != 2 or core_sg.shape[1] < 3:
-        raise ValueError("mst deve ter shape (n_edges, 3)")
+        raise ValueError("mst must have shape (n_edges, 3)")
 
     u = core_sg[:, 0].astype(np.int64, copy=False)
     v = core_sg[:, 1].astype(np.int64, copy=False)
@@ -35,9 +35,9 @@ def reweight_core_sg_mutual_reachability(
     n_nodes: int,
 ) -> np.ndarray:
     """
-    Atualiza pesos do core_sg:
+    Update Core-sg weights:
       w(u,v) = max(core_k[u], core_k[v], dist(u,v))
-    usando lookup vetorizado em metric_edges (bigger, smaller, dist).
+    Using vectorized lookup in metric_edges (bigger, smaller, dist).
 
     Retorna (E,3) float64.
     """
@@ -65,7 +65,7 @@ def reweight_core_sg_mutual_reachability(
     pos = np.searchsorted(key_me_sorted, key_core)
     ok = (pos < key_me_sorted.size) & (key_me_sorted[pos] == key_core)
     if not np.all(ok):
-        raise KeyError("Arestas do core_sg faltando em metric_edges (faltou merge MST→metric_edges?).")
+        raise KeyError("CoreSG edges are missing in metric_edges.")
 
     dist_uv = w_sorted[pos]
 

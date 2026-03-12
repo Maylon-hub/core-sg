@@ -69,3 +69,4 @@ def test_class_core_sg_mst_mrd():
             raise ValueError(f"A MST para k = {k_iter} nao esta contida no Core-SG")
 
 
+test_class_core_sg_mst_mrd()
