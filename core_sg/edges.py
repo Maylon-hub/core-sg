@@ -8,15 +8,15 @@ def build_knng_vectors(
     k_max: int,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    Retorna:
+    Return:
       metric_edges: (E,3) [bigger, smaller, dist]
       knng_to_insert: (E,3) [i, neighbor, dist]
-    onde E = knng_size*k_max.
+    where E = knng_size*k_max.
     """
     if idxs_arr.shape != (knng_size, k_max):
-        raise ValueError(f"idxs_arr.shape deve ser {(knng_size, k_max)}, recebeu {idxs_arr.shape}")
+        raise ValueError(f"idxs_arr.shape must be {(knng_size, k_max)}, got {idxs_arr.shape}")
     if distance_arr.shape != (knng_size, k_max):
-        raise ValueError(f"distance_arr.shape deve ser {(knng_size, k_max)}, recebeu {distance_arr.shape}")
+        raise ValueError(f"distance_arr.shape must be {(knng_size, k_max)}, got {distance_arr.shape}")
 
     idxs_arr = np.ascontiguousarray(idxs_arr, dtype=np.int64)
     distance_arr = np.ascontiguousarray(distance_arr, dtype=np.float64)
@@ -43,17 +43,17 @@ def build_knng_vectors(
 
 def add_mst_edges_to_metric_edges(metric_edges: np.ndarray, mst: np.ndarray, *, n_nodes: int | None = None) -> np.ndarray:
     """
-    Adiciona arestas da MST em metric_edges, sem repetição (pelo par bigger/smaller).
+    Add MST edges in metric_edges, without duplicates (bigger/smaller conection)
     metric_edges: (E,3) [bigger, smaller, dist]
-    mst:          (M,3) [u, v, w] (qualquer ordem) OU [bigger, smaller, w]
+    mst:          (M,3) [u, v, w] (any order) OR [bigger, smaller, w]
     """
     me = np.ascontiguousarray(metric_edges, dtype=np.float64)
     mst = np.ascontiguousarray(mst, dtype=np.float64)
 
     if me.ndim != 2 or me.shape[1] < 3:
-        raise ValueError("metric_edges deve ser (E,3).")
+        raise ValueError("metric_edges must be (E,3).")
     if mst.ndim != 2 or mst.shape[1] < 3:
-        raise ValueError("mst deve ser (M,3).")
+        raise ValueError("mst must be (M,3).")
 
     me_b = me[:, 0].astype(np.int64, copy=False)
     me_s = me[:, 1].astype(np.int64, copy=False)

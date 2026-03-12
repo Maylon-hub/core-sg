@@ -24,14 +24,15 @@ Esta pasta contém a suíte de testes em `pytest` para a biblioteca `core-sg`.
 ## Como executar
 
 ```bash
-pytest teste -q
+pytest tests -q
 ```
 
 Para rodar apenas os testes unitários puros:
 
 ```bash
-pytest teste/test_class_initialization.py teste/test_class_fit.py teste/test_class_hierarchy.py teste/test_low_level_helpers.py -q
+pytest tests/test_class_initialization.py teste/test_class_fit.py teste/test_class_hierarchy.py teste/test_low_level_helpers.py -q
 ```
+
 
 Para rodar testes no modo debug
 

@@ -32,11 +32,12 @@ def test_get_core_sg_mutual_reachability_distance_delegates_to_helper(core_sg_mo
     obj, _ = fitted_obj
     sentinel = np.array([[0.0, 1.0, 3.14]])
 
-    def fake_core_sg_mutual_reachability_distance(core_sg, metric_edges, core_k_list, n_nodes, k):
+    def fake_core_sg_mutual_reachability_distance(core_sg, metric_edges, core_k_list, n_nodes,k_max, k):
         assert core_sg is obj._core_sg
         assert metric_edges is obj._metric_edges
         assert core_k_list is obj._core_k_list
         assert n_nodes == obj.n
+        assert k_max == obj.k_max
         assert k == 3
         return sentinel
 

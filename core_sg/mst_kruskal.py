@@ -9,8 +9,7 @@ MST_EDGE_DTYPE = np.dtype([("u", np.int64), ("v", np.int64), ("distance", np.flo
 
 class UnionFind:
     """
-    Union-Find com path compression + union by rank.
-    Implementação otimizada para loop Python (minimiza overhead).
+    Union-Find with path compression + union by rank.
     """
 
     __slots__ = ("parent", "rank")
@@ -49,18 +48,18 @@ class UnionFind:
 
 def kruskal_mst(edges: np.ndarray, n_nodes: int) -> np.recarray:
     """
-    Kruskal para arestas no formato (E,3): [u, v, w] (qualquer dtype numérico).
+    Kruskal for edges (E,3): [u, v, w] (qualquer dtype numérico).
 
     Retorna:
-      recarray com dtype [('u', int64), ('v', int64), ('distance', float64)]
-      e tamanho n_nodes-1.
+      recarray with  dtype [('u', int64), ('v', int64), ('distance', float64)]
+      and size n_nodes-1.
 
     """
     e = np.asarray(edges)
     if e.ndim != 2 or e.shape[1] < 3:
-        raise ValueError("edges deve ter shape (E,3) com colunas [u, v, w].")
+        raise ValueError("edges must have shape (E,3) with columns [u, v, w].")
     if n_nodes <= 1:
-        raise ValueError("n_nodes deve ser >= 2.")
+        raise ValueError("n_nodes must be >= 2.")
 
     # Colunas (sem forçar float64 em tudo; só o peso precisa ser float64)
     u_all = np.asarray(e[:, 0], dtype=np.int64)
@@ -98,7 +97,7 @@ def kruskal_mst(edges: np.ndarray, n_nodes: int) -> np.recarray:
                 break
 
     if m != n_nodes - 1:
-        raise ValueError("Grafo desconexo: não foi possível construir MST completa.")
+        raise ValueError("Disconex Graph: MST extraction is not possible.")
 
     # Materializa structured array só no final (barato)
     out = np.empty(n_nodes - 1, dtype=MST_EDGE_DTYPE).view(np.recarray)
