@@ -157,6 +157,10 @@ Instead, it should be understood as a companion project that:
 
 If you are already familiar with HDBSCAN, the Core-SG interface should feel natural.
 
+## License
+
+This project is licensed under the BSD 3-Clause License. See the `LICENSE` file for details.
+
 ## References
 
 ### Core-SG
@@ -178,6 +182,7 @@ If you are already familiar with HDBSCAN, the Core-SG interface should feel natu
   - https://hdbscan.readthedocs.io/en/latest/advanced_hdbscan.html
 - API reference:
   - https://hdbscan.readthedocs.io/en/latest/api.html
+
 
 ## Citation
 
