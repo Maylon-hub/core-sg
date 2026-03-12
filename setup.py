@@ -24,16 +24,42 @@ def requirements() -> list[str]:
     ]
 
 
+def dev_requirements() -> list[str]:
+    return [
+        "pytest>=8.0",
+        "pytest-cov>=5.0",
+        "build>=1.2.2",
+        "twine>=5.1.0",
+    ]
+
+
 configuration = {
     "name": "core-sg",
     "version": "0.1.0",
     "description": "Core-SG graph construction and MST extraction utilities for HDBSCAN-style clustering.",
     "long_description": readme(),
     "long_description_content_type": "text/markdown",
+    "author": "Midas Core-SG Team",
+    "author_email": "gmcorlando@estudante.ufscar.br",
+    "url": "https://github.com/midas-core-sg/core-sg",
+    "project_urls": {
+        "Source": "https://github.com/midas-core-sg/core-sg",
+        "Issues": "https://github.com/midas-core-sg/core-sg/issues",
+        "Documentation": "https://github.com/midas-core-sg/core-sg#readme",
+    },
+    "keywords": [
+        "core-sg",
+        "clustering",
+        "hdbscan",
+        "graph",
+        "mst",
+        "density-based-clustering",
+    ],
     "classifiers": [
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
+        "Operating System :: OS Independent",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3 :: Only",
@@ -43,16 +69,20 @@ configuration = {
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development :: Libraries :: Python Modules",
-        "Operating System :: OS Independent",
     ],
-    "keywords": "core-sg clustering hdbscan graph mst density hierarchical",
-    "url": "https://github.com/midas-core-sg/core-sg",
-    "author": "Midas Core-SG Team",
-    "license": "-",
+    "license": "BSD-3-Clause",
+    "license_files": ["LICENSE"],
     "packages": find_packages(include=["core_sg", "core_sg.*"]),
-    "install_requires": requirements(),
-    "python_requires": ">=3.10",
     "include_package_data": True,
+    "install_requires": requirements(),
+    "extras_require": {
+        "dev": dev_requirements(),
+        "test": [
+            "pytest>=8.0",
+            "pytest-cov>=5.0",
+        ],
+    },
+    "python_requires": ">=3.10",
     "zip_safe": False,
 }
 
