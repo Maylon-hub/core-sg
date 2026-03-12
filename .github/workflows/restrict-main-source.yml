@@ -1,4 +1,4 @@
-name: Restrict merges into main
+name: Restrict main merges
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ jobs:
   only-from-develop:
     runs-on: ubuntu-latest
     steps:
-      - name: Fail if PR source branch is not develop
+      - name: Validate PR source branch
         run: |
           echo "Base branch: ${{ github.base_ref }}"
           echo "Head branch: ${{ github.head_ref }}"
