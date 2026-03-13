@@ -147,8 +147,7 @@ git tag -a v0.1.0rc1 -m "core-sg v0.1.0rc1"
 git push origin v0.1.0rc1
 ```
 
-git tag -a v0.1.0rc3 -m "core-sg v0.1.0rc3"
-git push origin v0.1.0rc3
+
 
 ### What happens next
 
