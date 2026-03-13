@@ -58,18 +58,6 @@ jobs:
       - name: Wait for package to become available
         run: sleep 120
 
-      - name: Installing Scikit-Learn
-        run: python -m pip install scikit-learn
-
-      - name: Installing hdbscan
-        run: python -m pip install hdbscan
-
-      - name: Installing pandas
-        run: python -m pip install pandas
-
-      - name: Installing numpy
-        run: python -m pip install numpy
-
       - name: Install published package from TestPyPI
         run: python -m pip install -i https://test.pypi.org/simple/ core-sg==${GITHUB_REF_NAME#v}
 
