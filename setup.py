@@ -29,7 +29,7 @@ def dev_requirements() -> list[str]:
 
 configuration = {
     "name": "core-sg",
-    "version": "0.1.0rc7",
+    "version": "0.1.0rc8",
     "description": "Core-SG graph construction and MST extraction utilities for HDBSCAN-style clustering.",
     "long_description": readme(),
     "long_description_content_type": "text/markdown",
