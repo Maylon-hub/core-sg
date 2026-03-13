@@ -138,9 +138,6 @@ Update the package version on `develop`, commit the change, and push it.
 ```
 git checkout develop
 git pull origin develop
-git add .
-git commit -m "chore(release): prepare v0.1.0rc1"
-git push origin develop
 ```
 
 Then create and push the tag:
@@ -149,6 +146,9 @@ Then create and push the tag:
 git tag -a v0.1.0rc1 -m "core-sg v0.1.0rc1"
 git push origin v0.1.0rc1
 ```
+
+git tag -a v0.1.0rc3 -m "core-sg v0.1.0rc3"
+git push origin v0.1.0rc3
 
 ### What happens next
 

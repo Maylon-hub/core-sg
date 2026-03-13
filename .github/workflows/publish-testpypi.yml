@@ -56,14 +56,10 @@ jobs:
         run: python -m pip install --upgrade pip
 
       - name: Wait for package to become available
-        run: sleep 60
+        run: sleep 300
 
       - name: Install published package from TestPyPI
-        run: |
-          python -m pip install \
-            --index-url https://test.pypi.org/simple/ \
-            --extra-index-url https://pypi.org/simple/ \
-            core-sg==${GITHUB_REF_NAME#v}
+        run: python -m pip install -i https://test.pypi.org/simple/ core-sg==${GITHUB_REF_NAME#v}
 
       - name: Run smoke test
         run: |
