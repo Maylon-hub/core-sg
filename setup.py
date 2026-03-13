@@ -3,25 +3,18 @@ from pathlib import Path
 from setuptools import find_packages, setup
 
 
-BASE_DIR = Path(__file__).resolve().parent
-
-
 def readme() -> str:
-    readme_path = BASE_DIR / "README.md"
-    if readme_path.exists():
-        return readme_path.read_text(encoding="utf-8")
-    return "Core-SG graph construction and MST extraction utilities for HDBSCAN-style clustering."
+    try:
+        with open('README.md') as readme_file:
+            return readme_file.read()
+    except:
+        return "Core-SG graph construction and MST extraction utilities for HDBSCAN-style clustering."
 
 
 def requirements() -> list[str]:
-    req_path = BASE_DIR / "requirements.txt"
-    if not req_path.exists():
-        return []
-    return [
-        line.strip()
-        for line in req_path.read_text(encoding="utf-8").splitlines()
-        if line.strip() and not line.strip().startswith("#")
-    ]
+    # The dependencies are the same as the contents of requirements.txt
+    with open('requirements.txt') as f:
+        return [line.strip() for line in f if line.strip()]
 
 
 def dev_requirements() -> list[str]:
@@ -35,7 +28,7 @@ def dev_requirements() -> list[str]:
 
 configuration = {
     "name": "core-sg",
-    "version": "0.1.0rc6",
+    "version": "0.1.0rc7",
     "description": "Core-SG graph construction and MST extraction utilities for HDBSCAN-style clustering.",
     "long_description": readme(),
     "long_description_content_type": "text/markdown",
