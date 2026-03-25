@@ -1,46 +1,31 @@
-# CoreSG: Efﬁcient Computation of Multiple MSTs for Density-Based Methods
+# Core-SG
 
-Core-SG graph construction and MST extraction utilities for HDBSCAN-style clustering.
+[![PyPI version](https://img.shields.io/pypi/v/core-sg.svg)](https://pypi.org/project/core-sg/)
+[![Python versions](https://img.shields.io/pypi/pyversions/core-sg.svg)](https://pypi.org/project/core-sg/)
+[![Tests](https://img.shields.io/github/actions/workflow/status/midas-core-sg/core-sg/test.yml?branch=main&label=tests)](https://github.com/midas-core-sg/core-sg/actions/workflows/test.yml)
+[![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
 
-core-sg is a Python library for building a reusable Core-SG graph and recovering minimum spanning trees and hierarchy objects for different values of k.
+Core-SG is a Python library for reusable graph support construction at `k_max`, followed by fast extraction of MSTs and HDBSCAN-style hierarchy outputs for smaller values of `k`.
 
-The goal is to stay close to the HDBSCAN workflow while giving more direct control over the graph and MST side of the pipeline.
+The main goal is simple: fit once at `k_max`, reuse many times for `k <= k_max`.
 
-## Important acknowledgment
+## What Core-SG is for
 
-This project is structurally inspired by and technically based on the `hdbscan` library.
+Core-SG is designed for workflows where you need to compare multiple `k` values on the same dataset and you care about graph-level artifacts, not only final labels.
 
-In the current implementation, Core-SG relies on hdbscan for:
+In practice, Core-SG helps you:
 
-- reference behavior at k_max
-- hierarchy post-processing
-- single linkage tree conversion
-- tree and MST wrapper objects
+- reuse support across repeated `k` evaluations
+- extract minimum spanning trees for different `k`
+- keep an HDBSCAN-like workflow (`labels_`, `probabilities_`, `cluster_persistence_`)
+- inspect tree artifacts (`condensed_tree_`, `single_linkage_tree_`, `minimum_spanning_tree_`)
 
-Because of that, any documentation, benchmark, report, or presentation involving Core-SG should explicitly cite and credit `hdbscan`.
+## How to use Core-SG
 
-## Installation
+Core-SG follows a two-stage workflow:
 
-```
-pip install core-sg
-```
-
-For local development:
-
-```
-pip install -e .
-```
-
-## Dependencies
-
-Core-SG currently depends on:
-
-- numpy
-- pandas
-- scikit-learn
-- hdbscan
-
-## Quick start
+1. fit once with `k_max`
+2. extract MSTs and hierarchies for smaller `k`
 
 ```python
 from sklearn.datasets import make_blobs
@@ -57,21 +42,14 @@ core = CoreSG(metric="euclidean", p=2)
 core.fit(X, k_max=15)
 ```
 
-After fitting, the object stores the reference artifacts for k_max and can be reused for smaller values of k.
-
-## Extracting an MST
+### Extracting an MST
 
 ```python
 mst = core.extract_mst_from_core_sg(k=10)
-```
-
-If you want the MST as a DataFrame:
-
-```python
 mst_df = core.extract_mst_from_core_sg(k=10, toDF=True)
 ```
 
-## Extracting a hierarchy
+### Extracting hierarchy outputs
 
 ```python
 core.extract_hierarchy_from_core_sg(k=10)
@@ -81,124 +59,121 @@ probabilities = core.probabilities_
 cluster_persistence = core.cluster_persistence_
 ```
 
-## Inspecting clustering objects
-
-Like HDBSCAN, Core-SG also exposes tree-style objects after hierarchy extraction.
-
-### Condensed tree
+### Inspecting tree objects
 
 ```python
 condensed_tree = core.condensed_tree_
-```
-
-### Single linkage tree
-
-```python
 single_linkage_tree = core.single_linkage_tree_
-```
-
-### Minimum spanning tree
-
-```python
 minimum_spanning_tree = core.minimum_spanning_tree_
 ```
 
-## Accessing the reference fit at k_max
-
-The artifacts saved during the reference fit can also be recovered directly.
+### Accessing fitted artifacts at `k_max`
 
 ```python
 fitted = core.get_fitted_hdbscan_objects(wrapped=True)
 ```
 
-This includes:
+Returned keys:
 
-- labels_
-- probabilities_
-- cluster_persistence_
-- condensed_tree_
-- single_linkage_tree_
-- minimum_spanning_tree_
+- `labels_`
+- `probabilities_`
+- `cluster_persistence_`
+- `condensed_tree_`
+- `single_linkage_tree_`
+- `minimum_spanning_tree_`
 
-There are also direct cached accessors for the k_max fit:
+Direct cached wrappers at fit-time:
 
-- condensed_tree_k_max_
-- single_linkage_tree_k_max_
-- minimum_spanning_tree_k_max_
+- `condensed_tree_k_max_`
+- `single_linkage_tree_k_max_`
+- `minimum_spanning_tree_k_max_`
 
+## Performance (multi-k workflows)
 
-## Why use Core-SG?
+Core-SG is optimized for repeated `k` analysis, not necessarily for a single one-off run.
 
-The library is built around a simple idea:
+In `notebooks/01-HDBSCAN_comparision.ipynb`, for a synthetic setup (`n=5000`, `d=2`, `centers=10`) with repeated evaluations from `k=30` down to `k=10`, cumulative runtime was:
 
-1. build the graph support once at k_max
-2. reuse that support for smaller values of k
-3. recover MSTs and HDBSCAN-style hierarchy objects without rebuilding everything from scratch
+- Core-SG: `9.76 s`
+- HDBSCAN: `32.44 s`
 
-This makes it easier to compare multiple values of k in a consistent workflow.
+This notebook demonstrates the intended tradeoff: higher upfront cost at `k_max`, lower cumulative cost when reusing across multiple smaller `k` values.
 
-Core-SG is useful when you want to:
+## Known limitations
 
-- reuse a graph structure across several values of k
-- recover MSTs without rebuilding the full support each time
-- keep an HDBSCAN-like interface for labels and hierarchy objects
-- work more directly with graph-level clustering structures
+- Core-SG provides strongest gains in repeated multi-`k` usage
+- for single `k` workflows, plain HDBSCAN may be simpler
+- current hierarchy pipeline still depends on HDBSCAN ecosystem components
 
+## Installing
 
-## Relationship with HDBSCAN
+Install from PyPI:
 
-Core-SG is not intended to replace HDBSCAN.
+```bash
+pip install core-sg
+```
 
-Instead, it should be understood as a companion project that:
+Install for local development:
 
-- follows an HDBSCAN-like user experience
-- reuses HDBSCAN internals where appropriate
-- focuses specifically on Core-SG graph construction and reuse across k values
+```bash
+pip install -e .
+```
 
-If you are already familiar with HDBSCAN, the Core-SG interface should feel natural.
+Dependencies:
+
+- `numpy>=1.24,<3`
+- `pandas>=2.0`
+- `scikit-learn>=1.3`
+- `hdbscan>=0.8.39`
+
+## Running tests
+
+```bash
+pytest tests -v -ra
+```
+
+## Python version
+
+Core-SG supports Python `>=3.10`.
+
+## Help and support
+
+- Documentation and project overview: https://github.com/midas-core-sg/core-sg#readme
+- Issues: https://github.com/midas-core-sg/core-sg/issues
+
+## Contributing
+
+Contributions are welcome. Please follow the contribution workflow in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+## Acknowledgment
+
+Core-SG is structurally inspired by and technically based on the `hdbscan` ecosystem.
+
+- HDBSCAN repository: https://github.com/scikit-learn-contrib/hdbscan
+- HDBSCAN documentation: https://hdbscan.readthedocs.io/en/latest/
+
+## Citing
+
+If you use Core-SG in scientific or technical work, please cite Core-SG and relevant HDBSCAN references.
+
+```bibtex
+@software{core_sg,
+  title = {Core-SG},
+  author = {Midas Core-SG Team},
+  url = {https://github.com/midas-core-sg/core-sg}
+}
+```
 
 ## License
 
-This project is licensed under the BSD 3-Clause License. See the `LICENSE` file for details.
+Core-SG is licensed under the BSD 3-Clause License. See [LICENSE](LICENSE) for details.
 
 ## References
 
-### Core-SG
-
-- Repository:
-  - https://github.com/midas-core-sg/core-sg
-- Develop branch:
-  - https://github.com/midas-core-sg/core-sg/tree/develop
 
 ### HDBSCAN
-
-- Repository:
-  - https://github.com/scikit-learn-contrib/hdbscan
-- Documentation:
-  - https://hdbscan.readthedocs.io/en/latest/
-- Basic usage:
-  - https://hdbscan.readthedocs.io/en/latest/basic_hdbscan.html
-- Getting more information:
-  - https://hdbscan.readthedocs.io/en/latest/advanced_hdbscan.html
-- API reference:
-  - https://hdbscan.readthedocs.io/en/latest/api.html
-
-
-## Citation
-
-If you use Core-SG in academic or technical work, please cite both the Core-SG paper and the relevant HDBSCAN references.
-
-This project is structurally inspired by and technically dependent on hdbscan. In its current implementation, Core-SG reuses HDBSCAN concepts and parts of the HDBSCAN code path for hierarchy construction, tree conversion, and wrapper objects. For that reason, hdbscan should be acknowledged as a foundational reference whenever Core-SG is cited.
-
-### Core-SG
-
-- Neto, Antonio Cavalcante Araujo, Murilo Coelho Naldi, Ricardo J. G. B. Campello, and Jörg Sander. "CORE-SG: Efficient Computation of Multiple MSTs for Density-Based Methods." In Proceedings of the 2022 IEEE 38th International Conference on Data Engineering (ICDE), pp. 951-964. IEEE, 2022. DOI: 10.1109/ICDE53745.2022.00076.
-
-### HDBSCAN
-
-- McInnes, Leland, John Healy, and Steve Astels. "hdbscan: Hierarchical density based clustering." Journal of Open Source Software 2, no. 11 (2017): 205.
-
-- McInnes, Leland, and John Healy. "Accelerated Hierarchical Density Based Clustering." In 2017 IEEE International Conference on Data Mining Workshops (ICDMW), pp. 33-42. IEEE, 2017.
-
-- Bot, Daniël M., Jannes Peeters, Jori Liesenborgs, and Jan Aerts. "FLASC: a flare-sensitive clustering algorithm." PeerJ Computer Science 11 (2025): e2792. DOI: 10.7717/peerj-cs.2792.
-
+- Repository: https://github.com/scikit-learn-contrib/hdbscan
+- Documentation: https://hdbscan.readthedocs.io/en/latest/
+- Basic usage: https://hdbscan.readthedocs.io/en/latest/basic_hdbscan.html
+- Advanced usage: https://hdbscan.readthedocs.io/en/latest/advanced_hdbscan.html
+- API reference: https://hdbscan.readthedocs.io/en/latest/api.html
