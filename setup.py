@@ -22,6 +22,7 @@ def dev_requirements() -> list[str]:
     return [
         "pytest>=8.0",
         "pytest-cov>=5.0",
+        "ruff>=0.15.0",
         "build>=1.2.2",
         "twine>=5.1.0",
     ]

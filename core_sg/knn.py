@@ -2,7 +2,9 @@ from __future__ import annotations
 import numpy as np
 
 
-def knn_from_precomputed(D: np.ndarray, k: int, *, include_self: bool = False) -> tuple[np.ndarray, np.ndarray]:
+def knn_from_precomputed(
+    D: np.ndarray, k: int, *, include_self: bool = False
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Extract Exact kNN using NxN distance matrix
     Retrun (idxs, dists) with shape (N, k), order by distance (ascending).

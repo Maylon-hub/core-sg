@@ -13,8 +13,12 @@ def fitted_obj(core_sg_module, monkeypatch, sample_X):
     def fake_build_core_sg_from_data(X, k_max, metric, p, test_only=False):
         return payload
 
-    monkeypatch.setattr(core_sg_module, "build_core_sg_from_data", fake_build_core_sg_from_data)
-    obj = core_sg_module.CoreSG(cluster_selection_method="leaf", allow_single_cluster=True)
+    monkeypatch.setattr(
+        core_sg_module, "build_core_sg_from_data", fake_build_core_sg_from_data
+    )
+    obj = core_sg_module.CoreSG(
+        cluster_selection_method="leaf", allow_single_cluster=True
+    )
     obj.fit(sample_X, 4, test_only=True)
     return obj, payload
 
@@ -28,11 +32,15 @@ def test_get_core_distance_returns_requested_column(fitted_obj):
     assert np.array_equal(result, expected)
 
 
-def test_get_core_sg_mutual_reachability_distance_delegates_to_helper(core_sg_module, fitted_obj, monkeypatch):
+def test_get_core_sg_mutual_reachability_distance_delegates_to_helper(
+    core_sg_module, fitted_obj, monkeypatch
+):
     obj, _ = fitted_obj
     sentinel = np.array([[0.0, 1.0, 3.14]])
 
-    def fake_core_sg_mutual_reachability_distance(core_sg, metric_edges, core_k_list, n_nodes,k_max, k):
+    def fake_core_sg_mutual_reachability_distance(
+        core_sg, metric_edges, core_k_list, n_nodes, k_max, k
+    ):
         assert core_sg is obj._core_sg
         assert metric_edges is obj._metric_edges
         assert core_k_list is obj._core_k_list
@@ -41,14 +49,20 @@ def test_get_core_sg_mutual_reachability_distance_delegates_to_helper(core_sg_mo
         assert k == 3
         return sentinel
 
-    monkeypatch.setattr(core_sg_module, "core_sg_mutual_reachability_distance", fake_core_sg_mutual_reachability_distance)
+    monkeypatch.setattr(
+        core_sg_module,
+        "core_sg_mutual_reachability_distance",
+        fake_core_sg_mutual_reachability_distance,
+    )
 
     result = obj.get_core_sg_mutual_reachability_distance(3)
 
     assert result is sentinel
 
 
-def test_extract_hierarchy_for_smaller_k_updates_current_attributes(core_sg_module, fitted_obj, monkeypatch):
+def test_extract_hierarchy_for_smaller_k_updates_current_attributes(
+    core_sg_module, fitted_obj, monkeypatch
+):
     obj, payload = fitted_obj
     mst_small = np.array(
         [
@@ -61,7 +75,9 @@ def test_extract_hierarchy_for_smaller_k_updates_current_attributes(core_sg_modu
         dtype=np.float64,
     )
     slt_small = mst_small + 0.5
-    condensed = np.column_stack([np.arange(obj.n), np.arange(obj.n), np.ones(obj.n), np.full(obj.n, 2.0)]).astype(np.float64)
+    condensed = np.column_stack(
+        [np.arange(obj.n), np.arange(obj.n), np.ones(obj.n), np.full(obj.n, 2.0)]
+    ).astype(np.float64)
     labels = np.array([0, 0, 0, 1, 1, 1], dtype=np.int64)
     probabilities = np.linspace(0.5, 1.0, obj.n)
     persistence = np.array([0.55, 0.88], dtype=np.float64)
@@ -75,13 +91,23 @@ def test_extract_hierarchy_for_smaller_k_updates_current_attributes(core_sg_modu
         seen["kwargs"] = instance._get_tree_to_labels_kwargs()
         assert np.array_equal(single_linkage_tree, slt_small)
         assert np.array_equal(min_spanning_tree, mst_small)
-        return labels, probabilities, persistence, condensed, single_linkage_tree, min_spanning_tree
+        return (
+            labels,
+            probabilities,
+            persistence,
+            condensed,
+            single_linkage_tree,
+            min_spanning_tree,
+        )
 
     monkeypatch.setattr(core_sg_module, "tree_to_labels", fake_tree_to_labels)
 
     obj.extract_hierarchy_from_core_sg(3)
 
-    assert seen["kwargs"] == {"cluster_selection_method": "leaf", "allow_single_cluster": True}
+    assert seen["kwargs"] == {
+        "cluster_selection_method": "leaf",
+        "allow_single_cluster": True,
+    }
     assert np.array_equal(obj.labels_, labels)
     assert np.array_equal(obj.probabilities_, probabilities)
     assert np.array_equal(obj.cluster_persistence_, persistence)
@@ -107,9 +133,14 @@ def test_extract_hierarchy_for_kmax_reuses_saved_fit_outputs(fitted_obj):
     assert np.array_equal(obj._min_spanning_tree, obj._min_spanning_tree_k_max)
 
 
-def test_extract_mst_from_core_sg_uses_recomputed_path_for_smaller_k(core_sg_module, fitted_obj, monkeypatch):
+def test_extract_mst_from_core_sg_uses_recomputed_path_for_smaller_k(
+    core_sg_module, fitted_obj, monkeypatch
+):
     obj, _ = fitted_obj
-    mst_small = np.array([[0, 1, 1.0], [1, 2, 1.2], [2, 3, 2.0], [3, 4, 1.1], [4, 5, 1.2]], dtype=np.float64)
+    mst_small = np.array(
+        [[0, 1, 1.0], [1, 2, 1.2], [2, 3, 2.0], [3, 4, 1.1], [4, 5, 1.2]],
+        dtype=np.float64,
+    )
 
     def fake_mst_from_core_sg(core_sg, metric_edges, core_k_list, n_nodes, k):
         assert core_sg is obj._core_sg

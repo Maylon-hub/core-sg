@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 
-def test_knn_from_precomputed_excludes_self_and_returns_sorted_neighbors(core_sg_module):
+def test_knn_from_precomputed_excludes_self_and_returns_sorted_neighbors(
+    core_sg_module,
+):
     D = np.array(
         [
             [0.0, 2.0, 1.0],
@@ -25,15 +26,14 @@ def test_build_knng_vectors_preserves_shape_and_distances(core_sg_module):
     idxs = np.array([[1, 2], [0, 2], [0, 1]], dtype=np.int64)
     dists = np.array([[1.0, 2.0], [1.0, 3.0], [2.0, 3.0]], dtype=np.float64)
 
-    metric_edges, knng = core_sg_module.build_knng_vectors(idxs, dists, knng_size=3, k_max=2)
+    metric_edges, knng = core_sg_module.build_knng_vectors(
+        idxs, dists, knng_size=3, k_max=2
+    )
 
     assert metric_edges.shape == (6, 3)
     assert knng.shape == (6, 3)
     assert np.array_equal(knng[0], np.array([0.0, 1.0, 1.0]))
     assert np.array_equal(metric_edges[0], np.array([1.0, 0.0, 1.0]))
-
-
-
 
 
 def test_reweight_core_sg_mutual_reachability_uses_max_rule(core_sg_module):
@@ -69,6 +69,3 @@ def test_kruskal_mst_builds_tree_with_n_minus_one_edges(core_sg_module):
     assert np.array_equal(mst.u, np.array([0, 2, 1]))
     assert np.array_equal(mst.v, np.array([1, 3, 2]))
     assert np.allclose(mst.distance, np.array([1.0, 1.0, 2.0]))
-
-
-    

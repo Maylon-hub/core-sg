@@ -1,6 +1,7 @@
 from __future__ import annotations
 import numpy as np
 
+
 def build_knng_vectors(
     idxs_arr: np.ndarray,
     distance_arr: np.ndarray,
@@ -14,9 +15,13 @@ def build_knng_vectors(
     where E = knng_size*k_max.
     """
     if idxs_arr.shape != (knng_size, k_max):
-        raise ValueError(f"idxs_arr.shape must be {(knng_size, k_max)}, got {idxs_arr.shape}")
+        raise ValueError(
+            f"idxs_arr.shape must be {(knng_size, k_max)}, got {idxs_arr.shape}"
+        )
     if distance_arr.shape != (knng_size, k_max):
-        raise ValueError(f"distance_arr.shape must be {(knng_size, k_max)}, got {distance_arr.shape}")
+        raise ValueError(
+            f"distance_arr.shape must be {(knng_size, k_max)}, got {distance_arr.shape}"
+        )
 
     idxs_arr = np.ascontiguousarray(idxs_arr, dtype=np.int64)
     distance_arr = np.ascontiguousarray(distance_arr, dtype=np.float64)
@@ -41,7 +46,9 @@ def build_knng_vectors(
     return metric_edges, knng_to_insert
 
 
-def add_mst_edges_to_metric_edges(metric_edges: np.ndarray, mst: np.ndarray, *, n_nodes: int | None = None) -> np.ndarray:
+def add_mst_edges_to_metric_edges(
+    metric_edges: np.ndarray, mst: np.ndarray, *, n_nodes: int | None = None
+) -> np.ndarray:
     """
     Add MST edges in metric_edges, without duplicates (bigger/smaller conection)
     metric_edges: (E,3) [bigger, smaller, dist]

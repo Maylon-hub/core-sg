@@ -1,7 +1,6 @@
-# python -m tests.validate_core_sg_weight --n 5000 --d 10 --centers 10 --k 50 
+# python -m tests.validate_core_sg_weight --n 5000 --d 10 --centers 10 --k 50
 from __future__ import annotations
 
-import argparse
 import time
 import numpy as np
 from sklearn.datasets import make_blobs
@@ -21,8 +20,6 @@ def test_core_sg_mrd_weights():
     centers = 10
     k = 30
     seed = 42
-    atol = 1e-12
-    rtol = 1e-9
 
     print(f"Generating synthetic dataset: n={n}, d={d}, centers={centers}, seed={seed}")
     X, _ = make_blobs(
@@ -34,19 +31,14 @@ def test_core_sg_mrd_weights():
 
     # --- Build Core-SG (calculando pairwise dentro) ---
     t0 = time.time()
-    core_sg, metric_edges, core_k_list, D,_ = build_core_sg_from_data(
-        X,
-        k_max=k,
-        metric="euclidean",
-        pairwise_dtype=np.float64,
-        test_only=True
+    core_sg, metric_edges, core_k_list, D, _ = build_core_sg_from_data(
+        X, k_max=k, metric="euclidean", pairwise_dtype=np.float64, test_only=True
     )
     t1 = time.time()
     print(f"Core-SG build done in {t1 - t0:.2f}s")
-    #D[3881][2386] = 2.43
+    # D[3881][2386] = 2.43
 
-    for k_iter in range(k,2,-2):
-
+    for k_iter in range(k, 2, -2):
         # --- HDBSCAN referência (MST mutual reachability) ---
         t4 = time.time()
         ref = hdbscan.HDBSCAN(
@@ -72,18 +64,9 @@ def test_core_sg_mrd_weights():
             metric_edges=metric_edges,
             n_nodes=n,
         )
-        # --- Comparação MST: arestas + pesos ---  
-        obj = validate_weights_in_core_sg(
-            weighted,
-            mst_hdb,
-            D,
-            core_k,
-            n,
-            k_iter
-        )
+        # --- Comparação MST: arestas + pesos ---
+        obj = validate_weights_in_core_sg(weighted, mst_hdb, D, core_k, n, k_iter)
 
         if not obj.ok:
             print(obj)
             raise ValueError(f"A MST para k = {k_iter} nao esta contida no Core-SG")
-
-

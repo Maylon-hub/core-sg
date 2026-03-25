@@ -69,10 +69,13 @@ git commit -m "feat: add hierarchy extraction to CoreSG"
 
 ### 3. Run tests locally
 
-Before opening a pull request, make sure the test suite passes.
+Before opening a pull request, make sure the local quality checks pass.
 
 ```
 pytest tests -v -ra
+pytest tests -v -ra --cov=core_sg --cov-report=term-missing
+ruff check core_sg tests setup.py
+ruff format --check core_sg tests setup.py
 ```
 
 ### 4. Open a Pull Request to `develop`
@@ -84,6 +87,7 @@ Expected flow:
 - push your branch
 - open a PR to `develop`
 - wait for CI to run
+- make sure tests, coverage, lint, and format checks pass
 - request review if needed
 - merge after approval and passing checks
 

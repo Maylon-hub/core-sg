@@ -1,6 +1,7 @@
 from __future__ import annotations
 import numpy as np
 
+
 def sort_core_sg(core_sg: np.ndarray) -> np.ndarray:
     """
     CorSG to format [menor_idx, maior_idx, distancia]
@@ -41,7 +42,7 @@ def reweight_core_sg_mutual_reachability(
 
     Retorna (E,3) float64.
     """
-    assert np.all(core_sg[:,2] >= -1)
+    assert np.all(core_sg[:, 2] >= -1)
     e = np.ascontiguousarray(core_sg, dtype=np.float64)
     u = e[:, 0].astype(np.int64, copy=False)
     v = e[:, 1].astype(np.int64, copy=False)
@@ -71,6 +72,6 @@ def reweight_core_sg_mutual_reachability(
 
     ck = np.asarray(core_k, dtype=np.float64)
     e[:, 2] = np.maximum(np.maximum(ck[u], ck[v]), dist_uv)
-    assert np.all(e[:,2] != -1), "Placeholder values not overwritten"
+    assert np.all(e[:, 2] != -1), "Placeholder values not overwritten"
     e = sort_core_sg(e)
     return e
