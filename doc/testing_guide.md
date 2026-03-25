@@ -78,6 +78,22 @@ ruff check core_sg tests setup.py
 ruff format --check core_sg tests setup.py
 ```
 
+To run tests by category:
+
+```bash
+pytest tests/unit -q
+pytest tests/integration -q
+pytest tests/validation -q
+```
+
+To run tests by marker:
+
+```bash
+pytest -m unit -q
+pytest -m integration -q
+pytest -m "validation and not slow" -q
+```
+
 To run a single test file:
 
 ```bash
@@ -90,11 +106,28 @@ To run a single test function:
 pytest path/to/test_file.py -k test_name
 ```
 
-## 5. What should be tested
+## 5. Test Suite Structure
+
+The suite is organized by responsibility so contributors can quickly identify the scope of each test group.
+
+- `tests/unit/`
+  Fast tests for isolated behavior. These use controlled fixtures and fake `hdbscan` modules when the goal is to validate internal behavior without relying on the real external dependency.
+- `tests/integration/`
+  Tests that exercise the package boundary and real integration with `hdbscan`. These confirm that the public API works end to end with the real dependency installed.
+- `tests/validation/`
+  Heavier behavioral validation tests that compare Core-SG outputs against HDBSCAN reference behavior across multiple values of `k`. These are closer to algorithm-equivalence checks than ordinary unit tests.
+- `tests/helpers.py`
+  Shared builders, payloads, and comparison utilities reused across the suite.
+- `tests/validate.py`
+  Validation helpers specifically used by the heavier equivalence-style tests.
+
+This separation is meant to reduce navigation cost, make test intent clearer, and avoid mixing fast isolated tests with more expensive validation scenarios in the same directory.
+
+## 6. What should be tested
 
 The sections below describe the expected test coverage for the current codebase and what each test group is meant to validate.
 
-### 5.1 Public import and package surface
+### 6.1 Public import and package surface
 
 These tests verify that the package exposes the public API expected by users.
 
@@ -108,7 +141,7 @@ Why it matters:
 
 This is the first user-facing contract of the package. If the public import fails, the package is effectively unusable.
 
-### 5.2 Core-SG build from raw data
+### 6.2 Core-SG build from raw data
 
 These tests validate the behavior of `build_core_sg_from_data(...)` and the `fit(...)` path of `CoreSG`.
 
@@ -125,7 +158,7 @@ Why it matters:
 
 This is the foundation of the whole library. Every later extraction depends on the correctness of this initial build step.
 
-### 5.3 Validation of invalid parameters
+### 6.3 Validation of invalid parameters
 
 These tests confirm that invalid inputs raise explicit errors.
 
@@ -141,7 +174,7 @@ Why it matters:
 
 The project should fail fast and clearly when the requested configuration is impossible or inconsistent.
 
-### 5.4 MST extraction from Core-SG
+### 6.4 MST extraction from Core-SG
 
 These tests validate `mst_from_core_sg(...)` and `CoreSG.extract_mst_from_core_sg(...)`.
 
@@ -157,7 +190,7 @@ Why it matters:
 
 MST extraction is one of the central promises of the library. It must be correct, reproducible, and convenient to inspect.
 
-### 5.5 Mutual reachability reweighting behavior
+### 6.5 Mutual reachability reweighting behavior
 
 These tests validate the reweighted graph returned by `get_core_sg_mutual_reachability_distance(...)` and related helpers.
 
@@ -172,7 +205,7 @@ Why it matters:
 
 This is the mechanism that enables reuse across multiple values of `k`, which is the main technical value proposition of Core-SG.
 
-### 5.6 Hierarchy extraction and HDBSCAN-style outputs
+### 6.6 Hierarchy extraction and HDBSCAN-style outputs
 
 These tests validate `extract_hierarchy_from_core_sg(...)` and the tree-to-label conversion flow.
 
@@ -189,7 +222,7 @@ Why it matters:
 
 Users rely on Core-SG not only for MSTs but also for HDBSCAN-style downstream clustering artifacts.
 
-### 5.7 Wrapped object accessors
+### 6.7 Wrapped object accessors
 
 These tests validate the property accessors that expose HDBSCAN-compatible wrapper objects.
 
@@ -205,7 +238,7 @@ Why it matters:
 
 The properties are part of the public interface and should fail predictably when called too early.
 
-### 5.8 Cached fitted-object retrieval
+### 6.8 Cached fitted-object retrieval
 
 These tests validate `get_fitted_hdbscan_objects(...)`.
 
@@ -220,7 +253,7 @@ Why it matters:
 
 This method is a core part of the reusable workflow and should be reliable for both interactive usage and downstream tooling.
 
-### 5.9 DataFrame conversion helper
+### 6.9 DataFrame conversion helper
 
 These tests validate `_mst_to_dataframe(...)`.
 
@@ -234,7 +267,7 @@ Why it matters:
 
 This is a small helper, but it affects usability in notebooks, reports, and diagnostics.
 
-### 5.10 Metric-specific behavior
+### 6.10 Metric-specific behavior
 
 These tests validate the metric branches inside `build_core_sg_from_data(...)`.
 
@@ -249,7 +282,7 @@ Why it matters:
 
 The graph structure depends directly on the pairwise distance computation, so metric-specific regressions can silently affect all downstream results.
 
-### 5.11 Precomputed-style and missing-raw-data behavior
+### 6.11 Precomputed-style and missing-raw-data behavior
 
 These tests validate behavior when raw feature data is unavailable for wrapped MST visualization.
 
@@ -257,6 +290,21 @@ What is tested:
 
 - MST wrapper access returns `None` with a warning when raw data is unavailable
 - raw arrays remain available even when the wrapped plotting object cannot be built
+
+### 6.12 Responsibility grouping and naming conventions
+
+The current suite also enforces organizational conventions intended to keep the repository maintainable over time.
+
+What is expected:
+
+- unit, integration, and validation tests are placed in separate directories
+- files use consistent `test_<subject>_<behavior>.py` naming
+- classes use `Test...` grouping names
+- slower algorithm-validation tests are easy to identify and run separately
+
+Why it matters:
+
+Good test structure reduces contributor confusion, makes future gaps easier to spot, and lowers the cost of maintaining the suite as the project evolves.
 
 Why it matters:
 
