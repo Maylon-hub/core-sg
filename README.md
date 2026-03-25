@@ -2,12 +2,30 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/core-sg.svg)](https://pypi.org/project/core-sg/)
 [![Python versions](https://img.shields.io/pypi/pyversions/core-sg.svg)](https://pypi.org/project/core-sg/)
-[![Tests](https://img.shields.io/github/actions/workflow/status/midas-core-sg/core-sg/test.yml?branch=main&label=tests)](https://github.com/midas-core-sg/core-sg/actions/workflows/test.yml)
+[![Tests](https://img.shields.io/github/actions/workflow/status/midas-core-sg/core-sg/test.yml?branch=develop&label=tests)](https://github.com/midas-core-sg/core-sg/actions/workflows/test.yml)
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
 
-Core-SG is a Python library for reusable graph support construction at `k_max`, followed by fast extraction of MSTs and HDBSCAN-style hierarchy outputs for smaller values of `k`.
+Core-SG - Core Support Graph for efficient computation of multiple MSTs and HDBSCAN-style hierarchy outputs over varying values of `k`. Core-SG builds reusable graph support at `k_max` and then extracts minimum spanning trees and hierarchy artifacts for smaller values of `k <= k_max`. This allows Core-SG to support repeated multi-`k` analysis more efficiently than rebuilding the full structure for each `k`.
 
-The main goal is simple: fit once at `k_max`, reuse many times for `k <= k_max`.
+In practice this means that Core-SG lets you fit once at `k_max` and reuse the result straight away for many smaller `k` values with little or no extra setup, while keeping familiar HDBSCAN-like outputs such as `labels_`, `probabilities_`, `cluster_persistence_`, `condensed_tree_`, `single_linkage_tree_`, and `minimum_spanning_tree_`.
+
+Core-SG is ideal for exploratory multi-`k` density-based analysis; it is a practical approach for workflows where you want to compare smoothing levels on the same dataset and inspect graph-level artifacts, not only final labels.
+
+Based on the papers:
+
+``
+Antonio Cavalcante Araujo Neto, Murilo Coelho Naldi, Ricardo J. G. B. Campello, and Jorg Sander. CORE-SG: Efficient Computation of Multiple MSTs for Density-Based Methods. In: 2022 IEEE 38th International Conference on Data Engineering (ICDE), IEEE, pp. 951-964. 2022.
+``
+
+``
+Leland McInnes and John Healy. Accelerated Hierarchical Density Based Clustering. In: 2017 IEEE International Conference on Data Mining Workshops (ICDMW), IEEE, pp. 33-42. 2017.
+``
+
+``
+R. Campello, D. Moulavi, and J. Sander. Density-Based Clustering Based on Hierarchical Density Estimates. In: Advances in Knowledge Discovery and Data Mining, Springer, pp. 160-172. 2013.
+``
+
+Documentation and project overview are available in this repository. Notebooks comparing Core-SG to HDBSCAN and illustrating the intended multi-`k` workflow are available in [`notebooks/`](notebooks/).
 
 ## What Core-SG is for
 
@@ -154,13 +172,18 @@ Core-SG is structurally inspired by and technically based on the `hdbscan` ecosy
 
 ## Citing
 
-If you use Core-SG in scientific or technical work, please cite Core-SG and relevant HDBSCAN references.
+If you use Core-SG in scientific or technical work, please cite the Core-SG paper:
 
 ```bibtex
-@software{core_sg,
-  title = {Core-SG},
-  author = {Midas Core-SG Team},
-  url = {https://github.com/midas-core-sg/core-sg}
+@inproceedings{neto2022core_sg,
+  author = {Neto, Antonio Cavalcante Araujo and Naldi, Murilo Coelho and Campello, Ricardo J. G. B. and Sander, Jorg},
+  title = {{CORE-SG}: Efficient Computation of Multiple MSTs for Density-Based Methods},
+  booktitle = {2022 IEEE 38th International Conference on Data Engineering (ICDE)},
+  pages = {951--964},
+  year = {2022},
+  publisher = {IEEE},
+  doi = {10.1109/ICDE53745.2022.00076},
+  url = {https://doi.org/10.1109/ICDE53745.2022.00076}
 }
 ```
 
