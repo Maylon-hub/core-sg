@@ -1,44 +1,84 @@
-# Testes unitários do Core-SG
+# Core-SG Test Suite
 
-Esta pasta contém a suíte de testes em `pytest` para a biblioteca `core-sg`.
+This directory contains the `pytest` test suite for `core-sg`.
 
-## Estrutura
+## Structure
 
-- `conftest.py`: fixtures compartilhadas e ambiente fake de `hdbscan` para testes unitários puros.
-- `helpers.py`: utilitários de teste, payloads fake e validadores.
-- `test_class_initialization.py`: estado inicial, filtragem de kwargs e erros antes do `fit`.
-- `test_class_fit.py`: `fit`, cache de artefatos, retorno de MST e objetos salvos do `fit`.
-- `test_class_hierarchy.py`: extração de hierarquia, atualização de atributos e wrappers.
-- `test_low_level_helpers.py`: KNN, merge de arestas, reweight e Kruskal.
-- `test_reference_equivalence.py`: testes de integração com `hdbscan` real, com `skip` automático se a dependência não estiver instalada.
-- `test_validate_class_core_sg.py`: teste para verificar funcionamento da classe do CoreSG
-- `test_validate_class_core_sg_weight.py`: teste para verificar funcionamento da classe do CoreSG em relaçõ aos pesos MRD
-- `test_validate_class_mst_weight.py`: Teste apenas para verificar funcionamento
-- `test_validate_class.py`: Verificar funcionamento classe CoreSG
-- `test_validate_core_sg_mst_weight.py`: Verificação de funções
-- `test_validate_core_sg.py`: Verificação de funções
-- `test_validate_core_sg_weight.py`: Verificação de funções
-- `test_validate_mst_weight.py`: Verificação de funções
+```text
+tests/
+  conftest.py
+  helpers.py
+  validate.py
+  integration/
+    test_reference_equivalence.py
+  unit/
+    test_core_sg_fit.py
+    test_core_sg_hierarchy.py
+    test_core_sg_initialization.py
+    test_graph_helpers.py
+  validation/
+    conftest.py
+    test_class_contains_reference_mst.py
+    test_class_extracted_mst_matches_reference.py
+    test_class_hierarchy_artifacts.py
+    test_class_matches_reference_weights.py
+    test_core_sg_contains_reference_mst.py
+    test_core_sg_matches_reference_weights.py
+    test_extracted_mst_matches_reference.py
+```
 
+## Categories
 
-## Como executar
+- `unit/`: fast tests for isolated behavior using fixtures and fake `hdbscan` modules.
+- `integration/`: tests that exercise the package boundary and real `hdbscan` integration.
+- `validation/`: heavier algorithm-validation tests that compare Core-SG outputs with HDBSCAN reference behavior across multiple `k` values.
+- `helpers.py`: shared test builders and comparison utilities.
+- `validate.py`: validation helpers reused by the heavier equivalence tests.
+
+## Naming Conventions
+
+- Files follow `test_<subject>_<behavior>.py`.
+- Test classes use `Test...` names as logical groupings.
+- Test functions use descriptive `test_<behavior>_<expected_result>` naming.
+
+## How to Run
+
+Run the full suite:
 
 ```bash
 pytest tests -q
 ```
 
-Para rodar apenas os testes unitários puros:
+Run only unit tests:
 
 ```bash
-pytest tests/test_class_initialization.py teste/test_class_fit.py teste/test_class_hierarchy.py teste/test_low_level_helpers.py -q
+pytest tests/unit -q
 ```
 
+Run only integration tests:
 
-Para rodar testes no modo debug
+```bash
+pytest tests/integration -q
+```
+
+Run only validation tests:
+
+```bash
+pytest tests/validation -q
+```
+
+Run tests by marker:
+
+```bash
+pytest -m unit -q
+pytest -m integration -q
+pytest -m "validation and not slow" -q
+```
+
+Run in verbose mode:
 
 ```bash
 pytest tests -v -ra
 ```
-
 
 
