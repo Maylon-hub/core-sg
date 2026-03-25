@@ -38,7 +38,9 @@ def make_sample_X() -> np.ndarray:
     )
 
 
-def make_fit_payload(n: int = 6, k_max: int = 4) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, DummyHDBSCANObject]:
+def make_fit_payload(
+    n: int = 6, k_max: int = 4
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, DummyHDBSCANObject]:
     core_sg = np.array(
         [
             [0, 1, -1.0],
@@ -110,7 +112,9 @@ def make_fit_payload(n: int = 6, k_max: int = 4) -> tuple[np.ndarray, np.ndarray
     return core_sg, metric_edges, core_k_list[:, :k_max], D, hdb_obj
 
 
-def normalize_undirected_edges(edges: np.ndarray, *, with_weight: bool = True, decimals: int = 4) -> set[tuple[Any, ...]]:
+def normalize_undirected_edges(
+    edges: np.ndarray, *, with_weight: bool = True, decimals: int = 4
+) -> set[tuple[Any, ...]]:
     arr = np.asarray(edges, dtype=np.float64)
     normalized: set[tuple[Any, ...]] = set()
     for row in arr:
@@ -122,14 +126,18 @@ def normalize_undirected_edges(edges: np.ndarray, *, with_weight: bool = True, d
     return normalized
 
 
-def validate_reference_edges_in_core(core_sg: np.ndarray, mst_hdb: np.ndarray) -> ValidationSummary:
+def validate_reference_edges_in_core(
+    core_sg: np.ndarray, mst_hdb: np.ndarray
+) -> ValidationSummary:
     core_pairs = normalize_undirected_edges(core_sg, with_weight=False)
     ref_pairs = normalize_undirected_edges(mst_hdb, with_weight=False)
     missing = len(ref_pairs - core_pairs)
     return ValidationSummary(ok=missing == 0, missing=missing, compared=len(ref_pairs))
 
 
-def validate_reference_weights_in_core(reweighted_core_sg: np.ndarray, mst_hdb: np.ndarray) -> ValidationSummary:
+def validate_reference_weights_in_core(
+    reweighted_core_sg: np.ndarray, mst_hdb: np.ndarray
+) -> ValidationSummary:
     core_edges = normalize_undirected_edges(reweighted_core_sg, with_weight=True)
     ref_edges = normalize_undirected_edges(mst_hdb, with_weight=True)
     missing = len(ref_edges - core_edges)

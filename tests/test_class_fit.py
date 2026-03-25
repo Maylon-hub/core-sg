@@ -18,11 +18,15 @@ def patched_fit_dependencies(core_sg_module, monkeypatch):
         assert test_only is True
         return payload
 
-    monkeypatch.setattr(core_sg_module, "build_core_sg_from_data", fake_build_core_sg_from_data)
+    monkeypatch.setattr(
+        core_sg_module, "build_core_sg_from_data", fake_build_core_sg_from_data
+    )
     return payload
 
 
-def test_fit_returns_self_and_stores_artifacts(core_sg_module, patched_fit_dependencies, sample_X):
+def test_fit_returns_self_and_stores_artifacts(
+    core_sg_module, patched_fit_dependencies, sample_X
+):
     obj = core_sg_module.CoreSG(metric="euclidean", p=2, debug=False)
 
     returned = obj.fit(sample_X, 4, test_only=True)
@@ -44,7 +48,9 @@ def test_fit_returns_self_and_stores_artifacts(core_sg_module, patched_fit_depen
     assert np.array_equal(obj._min_spanning_tree_k_max, hdb_obj._min_spanning_tree)
 
 
-def test_extract_mst_from_core_sg_returns_cached_mst_for_kmax(core_sg_module, patched_fit_dependencies, sample_X):
+def test_extract_mst_from_core_sg_returns_cached_mst_for_kmax(
+    core_sg_module, patched_fit_dependencies, sample_X
+):
     obj = core_sg_module.CoreSG()
     obj.fit(sample_X, 4, test_only=True)
 
@@ -53,7 +59,9 @@ def test_extract_mst_from_core_sg_returns_cached_mst_for_kmax(core_sg_module, pa
     assert np.array_equal(result, obj._min_spanning_tree_k_max)
 
 
-def test_extract_mst_from_core_sg_to_dataframe_has_expected_schema(core_sg_module, patched_fit_dependencies, sample_X):
+def test_extract_mst_from_core_sg_to_dataframe_has_expected_schema(
+    core_sg_module, patched_fit_dependencies, sample_X
+):
     obj = core_sg_module.CoreSG()
     obj.fit(sample_X, 4, test_only=True)
 
@@ -65,7 +73,9 @@ def test_extract_mst_from_core_sg_to_dataframe_has_expected_schema(core_sg_modul
     assert str(df["weight"].dtype) == "float64"
 
 
-def test_get_fitted_hdbscan_objects_raw_returns_saved_arrays(core_sg_module, patched_fit_dependencies, sample_X):
+def test_get_fitted_hdbscan_objects_raw_returns_saved_arrays(
+    core_sg_module, patched_fit_dependencies, sample_X
+):
     obj = core_sg_module.CoreSG()
     obj.fit(sample_X, 4, test_only=True)
 
@@ -80,10 +90,14 @@ def test_get_fitted_hdbscan_objects_raw_returns_saved_arrays(core_sg_module, pat
         "minimum_spanning_tree_",
     }
     assert np.array_equal(fitted["labels_"], obj.labels_k_max)
-    assert np.array_equal(fitted["minimum_spanning_tree_"], obj._min_spanning_tree_k_max)
+    assert np.array_equal(
+        fitted["minimum_spanning_tree_"], obj._min_spanning_tree_k_max
+    )
 
 
-def test_get_fitted_hdbscan_objects_wrapped_returns_hdbscan_like_wrappers(core_sg_module, patched_fit_dependencies, sample_X):
+def test_get_fitted_hdbscan_objects_wrapped_returns_hdbscan_like_wrappers(
+    core_sg_module, patched_fit_dependencies, sample_X
+):
     obj = core_sg_module.CoreSG()
     obj.fit(sample_X, 4, test_only=True)
 

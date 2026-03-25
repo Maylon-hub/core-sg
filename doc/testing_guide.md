@@ -28,6 +28,10 @@ The repository metadata currently exposes a dedicated `test` extra in `setup.py`
 - `pytest>=8.0`
 - `pytest-cov>=5.0`
 
+The development extra also includes:
+
+- `ruff`
+
 The runtime dependencies used by the library are listed in `requirements.txt` and include:
 
 - `numpy`
@@ -65,6 +69,13 @@ To see coverage information:
 
 ```bash
 pytest --cov=core_sg --cov-report=term-missing
+```
+
+To run the lint and formatting checks enforced by CI:
+
+```bash
+ruff check core_sg tests setup.py
+ruff format --check core_sg tests setup.py
 ```
 
 To run a single test file:

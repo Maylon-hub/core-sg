@@ -4,8 +4,6 @@ import numpy as np
 from typing import Any
 
 
-
-
 @dataclass(frozen=True)
 class CoreSGValidationReport:
     n: int
@@ -15,10 +13,7 @@ class CoreSGValidationReport:
 
 
 def validate_mst_in_core_sg(
-    core_sg: np.ndarray,
-    mst_hdb: np.ndarray,
-    n:int,
-    k: int
+    core_sg: np.ndarray, mst_hdb: np.ndarray, n: int, k: int
 ) -> CoreSGValidationReport:
     """
     Valida Core-SG vs HDBSCAN referência (MST exata).
@@ -29,7 +24,7 @@ def validate_mst_in_core_sg(
     Retorna CoreSGValidationReport.
     """
     # --- Comparação MST: arestas + pesos ---
-    
+
     d_hdb = {}
     a = 0
     ok = True
@@ -45,11 +40,10 @@ def validate_mst_in_core_sg(
         min_val = min(hdb[:2])
         try:
             d_hdb[max_val][min_val].append(hdb[2])
-        except:
+        except KeyError:
             a += 1
             ok = False
 
-    
     return CoreSGValidationReport(
         n=int(n),
         k_max=int(k),
@@ -59,10 +53,7 @@ def validate_mst_in_core_sg(
 
 
 def validate_mst_from_core_sg(
-    mst_core: np.ndarray,
-    mst_hdb: np.ndarray,
-    n:int,
-    k: int
+    mst_core: np.ndarray, mst_hdb: np.ndarray, n: int, k: int
 ) -> CoreSGValidationReport:
     """
     Valida Core-SG vs HDBSCAN referência (MST exata).
@@ -74,36 +65,38 @@ def validate_mst_from_core_sg(
     """
     # --- Comparação MST: arestas + pesos ---
     mst_core_copy = mst_core.copy()
-    mst_hdb_copy = mst_hdb.copy() 
+    mst_hdb_copy = mst_hdb.copy()
     ok = True
     a = 0
 
     d_hdb = {}
     for hdb in mst_hdb_copy:
-        max_hdb,min_hdb,weight_hdb = int(max(hdb[:2])),int(min(hdb[:2])),hdb[2]
+        max_hdb, min_hdb, weight_hdb = int(max(hdb[:2])), int(min(hdb[:2])), hdb[2]
 
         if max_hdb not in d_hdb:
             d_hdb[max_hdb] = {}
         d_hdb[max_hdb][min_hdb] = weight_hdb
-    
+
     for core in mst_core_copy:
-        max_core,min_core,weight_core = int(max(core[:2])),int(min(core[:2])),core[2]
+        max_core, min_core, weight_core = (
+            int(max(core[:2])),
+            int(min(core[:2])),
+            core[2],
+        )
 
         if max_core not in d_hdb:
-            #print("Maximo")
+            # print("Maximo")
             a += 1
         elif min_core not in d_hdb[max_core]:
-            #print("Minimo")
-            #print(max_core,min_core)
+            # print("Minimo")
+            # print(max_core,min_core)
             a += 1
         elif abs(d_hdb[max_core][min_core] - weight_core) > 0.001:
-            #print("Distancia")
+            # print("Distancia")
             a += 1
 
-    if float(a)/n > 0.01:
+    if float(a) / n > 0.01:
         ok = False
-
-
 
     return CoreSGValidationReport(
         n=int(n),
@@ -112,13 +105,14 @@ def validate_mst_from_core_sg(
         missing_in_core=int(a),
     )
 
+
 def validate_weights_in_core_sg(
     core_sg: np.ndarray,
     mst_hdb: np.ndarray,
     D: np.ndarray,
     core_k: np.ndarray,
-    n:int,
-    k: int
+    n: int,
+    k: int,
 ) -> CoreSGValidationReport:
     """
     Valida Core-SG vs HDBSCAN referência (MST exata).
@@ -129,7 +123,7 @@ def validate_weights_in_core_sg(
     Retorna CoreSGValidationReport.
     """
     # --- Comparação MST: arestas + pesos ---
-    
+
     d_hdb = {}
     a = 0
     ok = True
@@ -146,16 +140,14 @@ def validate_weights_in_core_sg(
         min_val = min(hdb[:2])
         try:
             if d_hdb[max_val][min_val] != hdb[2]:
-                #print(f"Para o HDBSCAN MRD = {hdb[2]}")
-                #print(f"Distancia NxN = {D[int(max_val)][int(min_val)]} || Core-Distance_{max_val} = {core_k[int(max_val)]} || Core-Distance_{min_val} = {core_k[int(min_val)]}")
+                # print(f"Para o HDBSCAN MRD = {hdb[2]}")
+                # print(f"Distancia NxN = {D[int(max_val)][int(min_val)]} || Core-Distance_{max_val} = {core_k[int(max_val)]} || Core-Distance_{min_val} = {core_k[int(min_val)]}")
                 a += 1
                 ok = False
-        except Exception as e:
-            #print(e) 
+        except Exception:
             a += 1
             ok = False
 
-    
     return CoreSGValidationReport(
         n=int(n),
         k_max=int(k),
@@ -165,10 +157,7 @@ def validate_weights_in_core_sg(
 
 
 def validate_core_sg_atributtes(
-    atribute: Any,
-    n: int,
-    k: int,
-    condensed: bool = False
+    atribute: Any, n: int, k: int, condensed: bool = False
 ) -> CoreSGValidationReport:
     """
     Valida Core-SG vs HDBSCAN referência (MST exata).
@@ -179,22 +168,20 @@ def validate_core_sg_atributtes(
     Retorna CoreSGValidationReport.
     """
     # --- Comparação MST: arestas + pesos ---
-    
-   
+
     a = 0
     ok = True
 
     try:
         _ = atribute.to_pandas()
-        
+
         if not condensed:
-            assert _.shape[0] == n-1
+            assert _.shape[0] == n - 1
         else:
             assert _.shape[0] >= n
-    except:
+    except Exception:
         ok = False
 
-    
     return CoreSGValidationReport(
         n=int(n),
         k_max=int(k),

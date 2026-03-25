@@ -11,7 +11,7 @@ from warnings import warn
 from .knn import knn_from_precomputed
 from .edges import build_knng_vectors, add_mst_edges_to_metric_edges
 from .mst_kruskal import kruskal_mst
-from .reweight import reweight_core_sg_mutual_reachability,sort_core_sg
+from .reweight import reweight_core_sg_mutual_reachability, sort_core_sg
 
 from hdbscan.hdbscan_ import _tree_to_labels
 from hdbscan._hdbscan_linkage import label
@@ -20,20 +20,21 @@ from hdbscan.plots import SingleLinkageTree
 from hdbscan.plots import CondensedTree
 
 
-
-def hdbscan_reference_mst_original_distance(D: np.ndarray,k_max: int) -> np.ndarray:
+def hdbscan_reference_mst_original_distance(D: np.ndarray, k_max: int) -> np.ndarray:
     # min_samples=1 => mutual reachability == distância original
     clusterer = hdbscan.HDBSCAN(
-        min_cluster_size=k_max,          # qualquer >=2 (não importa, você só quer a MST)
+        min_cluster_size=k_max,  # qualquer >=2 (não importa, você só quer a MST)
         min_samples=k_max,
         metric="precomputed",
         algorithm="generic",
         approx_min_span_tree=False,
         gen_min_span_tree=True,
-        match_reference_implementation=True
+        match_reference_implementation=True,
     )
     clusterer.fit(D)
-    return clusterer,np.asarray(clusterer._min_spanning_tree, dtype=np.float64)  # pesos ~ D[u,v]
+    return clusterer, np.asarray(
+        clusterer._min_spanning_tree, dtype=np.float64
+    )  # pesos ~ D[u,v]
 
 
 def build_core_sg_from_data(
@@ -50,7 +51,7 @@ def build_core_sg_from_data(
       - core distances
       - kNNG vetorized
       - metric_edges
-      - Includes MST edges in metric_edges 
+      - Includes MST edges in metric_edges
       - Concatenate kNNG with MST MRD, building core-sg
 
     Returns:
@@ -103,19 +104,16 @@ def build_core_sg_from_data(
         k_max=graph_knn_k,
     )
 
-
     # min_samples conta o próprio ponto, então com diagonal 0
     # o índice correto é min_samples_k - 1
-    #core_k = np.partition(D, kth=min_samples_k - 1, axis=1)[:, min_samples_k - 1]
-    #core_k = np.ascontiguousarray(core_k, dtype=np.float64)
+    # core_k = np.partition(D, kth=min_samples_k - 1, axis=1)[:, min_samples_k - 1]
+    # core_k = np.ascontiguousarray(core_k, dtype=np.float64)
 
     core_k_list = np.partition(D, kth=min_samples_k - 1, axis=1)[:, :min_samples_k]
     core_k_list = np.sort(core_k_list, axis=1)
 
-
-
     # MST da mutual reachability com k_max
-    hdb_obj,mst_orig = hdbscan_reference_mst_original_distance(D,k_max)
+    hdb_obj, mst_orig = hdbscan_reference_mst_original_distance(D, k_max)
 
     u = mst_orig[:, 0].astype(np.int64, copy=False)
     v = mst_orig[:, 1].astype(np.int64, copy=False)
@@ -143,7 +141,7 @@ def build_core_sg_from_data(
     core_sg = np.vstack([knng_to_insert, mst_tmp])
     core_sg = sort_core_sg(core_sg)
 
-    return core_sg, metric_edges, core_k_list, D,hdb_obj
+    return core_sg, metric_edges, core_k_list, D, hdb_obj
 
 
 def mst_from_core_sg(
@@ -151,10 +149,10 @@ def mst_from_core_sg(
     metric_edges: np.ndarray,
     core_k_list: np.ndarray,
     n_nodes: int,
-    k: int
+    k: int,
 ):
     """
-    Reweight -> Kruskal -> 
+    Reweight -> Kruskal ->
     Retorna:
       mst_arr: (n-1,3) [u,v,w] ordenado por w
     """
@@ -173,24 +171,25 @@ def mst_from_core_sg(
         n_nodes=n_nodes,
     )
 
-
     mst_rec = kruskal_mst(weighted, n_nodes=n_nodes)
-    mst_arr = np.column_stack([mst_rec.u, mst_rec.v, mst_rec.distance]).astype(np.float64, copy=False)
+    mst_arr = np.column_stack([mst_rec.u, mst_rec.v, mst_rec.distance]).astype(
+        np.float64, copy=False
+    )
     mst_arr = mst_arr[np.argsort(mst_arr[:, 2], kind="mergesort")]
-
 
     return mst_arr
 
-def core_sg_mutual_reachability_distance( 
+
+def core_sg_mutual_reachability_distance(
     core_sg: np.ndarray,
     metric_edges: np.ndarray,
     core_k_list: np.ndarray,
     n_nodes: int,
     k_max: int,
-    k: int
+    k: int,
 ):
     """
-    Reweight CoreSG 
+    Reweight CoreSG
     Returns:
       core_sg: (n-1,3) [u,v,w] order by w
     """
@@ -250,14 +249,11 @@ def tree_to_labels(
 
     tree_kwargs = obj._get_tree_to_labels_kwargs()
 
-    return (
-        _tree_to_labels(
-            obj._D,
-            single_linkage_tree,
-            **tree_kwargs,
-        )
-        + (min_spanning_tree,)
-    )
+    return _tree_to_labels(
+        obj._D,
+        single_linkage_tree,
+        **tree_kwargs,
+    ) + (min_spanning_tree,)
 
 
 class CoreSG:
@@ -340,20 +336,16 @@ class CoreSG:
         self._single_linkage_tree = None
         self._min_spanning_tree = None
 
-    def get_core_sg_mutual_reachability_distance(self,k: int):
-        return core_sg_mutual_reachability_distance( 
-            self._core_sg,
-            self._metric_edges,
-            self._core_k_list,
-            self.n,
-            self.k_max,
-            k
+    def get_core_sg_mutual_reachability_distance(self, k: int):
+        return core_sg_mutual_reachability_distance(
+            self._core_sg, self._metric_edges, self._core_k_list, self.n, self.k_max, k
         )
-    def get_core_distance(self,k):
+
+    def get_core_distance(self, k):
         core_k = self._core_k_list[:, k - 1]
         core_k = np.ascontiguousarray(core_k, dtype=np.float64)
         return core_k
-    
+
     def _get_tree_to_labels_kwargs(self) -> dict[str, Any]:
         """
         Extract only the keyword arguments supported by `_tree_to_labels`.
@@ -386,7 +378,6 @@ class CoreSG:
         self.single_linkage_tree_k_max_ = hdb_obj._single_linkage_tree
         self.minimum_spanning_tree_k_max_ = hdb_obj._min_spanning_tree
 
-
     @staticmethod
     def _mst_to_dataframe(mst: np.ndarray) -> pd.DataFrame:
         """
@@ -412,7 +403,7 @@ class CoreSG:
                 "weight": "float64",
             }
         )
-   
+
     @property
     def condensed_tree_(self):
         """
@@ -456,7 +447,6 @@ class CoreSG:
         AttributeError
             If no fit-time condensed tree is available.
         """
-        
 
         if self._condensed_tree_k_max is not None:
             return CondensedTree(self._condensed_tree_k_max, self.labels_k_max)
@@ -485,7 +475,6 @@ class CoreSG:
             If no current single linkage tree is available.
         """
 
-
         if self._single_linkage_tree is not None:
             return SingleLinkageTree(self._single_linkage_tree)
 
@@ -497,7 +486,6 @@ class CoreSG:
     @single_linkage_tree_.setter
     def single_linkage_tree_(self, value):
         self._single_linkage_tree = value
-    
 
     def set_debug(self, value):
         self.debug = value
@@ -585,8 +573,7 @@ class CoreSG:
 
         if self._min_spanning_tree_k_max is None:
             raise AttributeError(
-                "No minimum spanning tree was saved from fit; "
-                "try running fit first."
+                "No minimum spanning tree was saved from fit; try running fit first."
             )
 
         if self._raw_data is not None:
@@ -641,7 +628,6 @@ class CoreSG:
                 "minimum_spanning_tree_": self.minimum_spanning_tree_k_max_,
             }
 
-
         return {
             "labels_": self.labels_k_max,
             "probabilities_": self.probabilities_k_max,
@@ -651,7 +637,7 @@ class CoreSG:
             "minimum_spanning_tree_": self._min_spanning_tree_k_max,
         }
 
-    def fit(self, X: np.ndarray, k_max: int,test_only: bool = False) -> "CoreSG":
+    def fit(self, X: np.ndarray, k_max: int, test_only: bool = False) -> "CoreSG":
         """
         Build the Core-SG for a reference value `k_max`.
 
@@ -681,11 +667,7 @@ class CoreSG:
             self._D,
             hdb_obj,
         ) = build_core_sg_from_data(
-            X,
-            k_max=k_max,
-            metric=self.metric,
-            p=self.p,
-            test_only=test_only
+            X, k_max=k_max, metric=self.metric, p=self.p, test_only=test_only
         )
         t1 = time()
 
@@ -756,15 +738,14 @@ class CoreSG:
             The method updates the instance attributes in place.
         """
 
-
         if self.k_max == k:
             (
-            self.labels_,
-            self.probabilities_,
-            self.cluster_persistence_,
-            condensed_tree,
-            single_linkage_tree,
-            min_spanning_tree,
+                self.labels_,
+                self.probabilities_,
+                self.cluster_persistence_,
+                condensed_tree,
+                single_linkage_tree,
+                min_spanning_tree,
             ) = self.get_fitted_hdbscan_objects(wrapped=False).values()
 
             self._condensed_tree = condensed_tree
@@ -795,5 +776,3 @@ class CoreSG:
             print(f"FOSC K = {k} done in {t1 - t0:.2f}s")
 
         return None
-
-        

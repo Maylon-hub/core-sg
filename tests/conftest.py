@@ -72,7 +72,13 @@ def fake_hdbscan_modules(monkeypatch):
                 np.full(n, 2.0, dtype=np.float64),
             ]
         )
-        return labels, probabilities, cluster_persistence, condensed, np.asarray(single_linkage_tree)
+        return (
+            labels,
+            probabilities,
+            cluster_persistence,
+            condensed,
+            np.asarray(single_linkage_tree),
+        )
 
     fake_hdbscan_mod._tree_to_labels = fake_tree_to_labels
     fake_linkage_mod.label = lambda mst: np.asarray(mst, dtype=np.float64)
