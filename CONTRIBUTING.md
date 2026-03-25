@@ -151,15 +151,16 @@ git tag -a v0.1.0rc1 -m "core-sg v0.1.0rc1"
 git push origin v0.1.0rc1
 ```
 
-
-
 ### What happens next
 
 Once the tag is pushed:
 
-- the package build workflow runs
-- the TestPyPI publishing workflow runs
+- the unified release workflow validates that the tagged commit belongs to `develop`
+- the package is built once and the validated artifact is reused for publication
 - the package is published automatically to TestPyPI
+- a smoke test runs after publication against the TestPyPI package
+
+If the tagged commit is not contained in `develop`, the release workflow is skipped.
 
 ### If something needs to be fixed
 
@@ -211,9 +212,12 @@ git push origin v0.1.0
 
 Once the final tag is pushed:
 
-- the package build workflow runs
-- the PyPI publishing workflow runs
+- the unified release workflow validates that the tagged commit belongs to `develop`
+- the package is built once and the validated artifact is reused for publication
 - the package is published automatically to PyPI
+- a smoke test runs after publication against the published PyPI package
+
+If the tagged commit is not contained in `develop`, the release workflow is skipped.
 
 ---
 
