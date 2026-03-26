@@ -161,7 +161,7 @@ This distinction is important because the main value of Core-SG comes from **reu
 Core-SG currently depends on a small but important set of external libraries.
 
 ### 5.1 Runtime and packaging dependencies
-The repository metadata currently indicates dependency on tooling and libraries such as:
+The repository uses `pyproject.toml` as the main packaging configuration and source of truth for runtime dependencies. The current package metadata indicates dependency on libraries such as:
 
 - `numpy`
 - `hdbscan`

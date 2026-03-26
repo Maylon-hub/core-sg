@@ -85,6 +85,27 @@ jobs:
       - name: Install build tools
         run: python -m pip install build twine
 
+      - name: Validate package version
+        env:
+          EXPECTED_VERSION: ${{ needs.release-context.outputs.version }}
+        run: |
+          python - <<'PY'
+          import os
+          import tomllib
+
+          expected = os.environ["EXPECTED_VERSION"]
+          with open("pyproject.toml", "rb") as fh:
+              project = tomllib.load(fh)["project"]
+
+          actual = project["version"]
+          if actual != expected:
+              raise SystemExit(
+                  f"pyproject.toml version mismatch: expected {expected}, found {actual}"
+              )
+
+          print(f"Validated package version {actual}.")
+          PY
+
       - name: Build distributions
         run: python -m build
 

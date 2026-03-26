@@ -137,12 +137,20 @@ Install for local development:
 pip install -e .
 ```
 
+Install with development tooling:
+
+```bash
+pip install -e ".[dev]"
+```
+
 Dependencies:
 
 - `numpy>=1.24,<3`
 - `pandas>=2.0`
 - `scikit-learn>=1.3`
 - `hdbscan>=0.8.39`
+
+The package metadata, runtime dependencies, and optional extras are defined in `pyproject.toml`.
 
 ## Running tests
 
