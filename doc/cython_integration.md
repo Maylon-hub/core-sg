@@ -221,3 +221,111 @@ python benchmarks/benchmark_graph_ops.py
 The current `setuptools` support for `tool.setuptools.ext-modules` in `pyproject.toml` works for this project, but it is still marked as experimental by setuptools itself.
 
 That does not block the build, but contributors should be aware of it when upgrading the packaging toolchain.
+
+## 12. Performance comparison
+
+The sections above explain the implementation strategy. This section explains the observed performance impact using the measured numbers collected before and after enabling the Cython backend.
+
+The comparison below uses the same workflow across multiple values of `k`, from `k=28` down to `k=10`, and compares:
+
+- the original Python implementation
+- the Cython-backed implementation
+
+The measured components were:
+
+- `REWEIGHT Core_SG`
+- `KRUSKAL Core_SG`
+- `Core-SG MST K = ... (Kruskal)`
+- `FOSC`
+- the end-to-end runtime reported for each `k`
+
+### 12.1 High-level result
+
+The main conclusion is straightforward:
+
+- the largest gain comes from `kruskal_mst(...)`
+- `reweight_core_sg_mutual_reachability(...)` also improves, but more modestly
+- the full Core-SG MST stage becomes much faster
+- the total end-to-end runtime is reduced by roughly half on this benchmark
+- `FOSC` is mostly unchanged, which is expected because it was not the target of the Cython migration
+
+### 12.2 Aggregate comparison
+
+The table below summarizes the aggregate timing across the 10 measured values of `k`.
+
+| Component | Python total (s) | Cython total (s) | Time saved (s) | Speedup |
+| --- | ---: | ---: | ---: | ---: |
+| Reweight | 4.01 | 3.41 | 0.60 | 1.18x |
+| Kruskal | 15.65 | 1.86 | 13.79 | 8.41x |
+| Core-SG MST stage | 19.74 | 5.30 | 14.44 | 3.72x |
+| FOSC | 10.39 | 9.89 | 0.50 | 1.05x |
+| End-to-end | 31.12 | 16.29 | 14.84 | 1.91x |
+
+This makes the main effect very clear:
+
+- the Kruskal part is the dominant win
+- the overall gain is not limited by Kruskal alone because `FOSC` still contributes roughly the same cost as before
+
+### 12.3 Average runtime per `k`
+
+Looking at the average time per measured value of `k`:
+
+| Component | Python avg (s) | Cython avg (s) | Avg time saved (s) | Speedup |
+| --- | ---: | ---: | ---: | ---: |
+| Reweight | 0.401 | 0.341 | 0.060 | 1.18x |
+| Kruskal | 1.565 | 0.186 | 1.379 | 8.41x |
+| Core-SG MST stage | 1.974 | 0.530 | 1.444 | 3.72x |
+| FOSC | 1.039 | 0.989 | 0.050 | 1.05x |
+| End-to-end | 3.112 | 1.629 | 1.484 | 1.91x |
+
+This is often the most useful view for contributors because it shows what one iteration of the multi-`k` workflow gains on average.
+
+### 12.4 End-to-end improvement by `k`
+
+The end-to-end speedup is not identical for every `k`, but it is consistently strong.
+
+| k | Python total (s) | Cython total (s) | Time saved (s) | Speedup |
+| --- | ---: | ---: | ---: | ---: |
+| 28 | 3.868 | 1.654 | 2.214 | 2.34x |
+| 26 | 3.444 | 1.716 | 1.728 | 2.01x |
+| 24 | 2.928 | 1.783 | 1.145 | 1.64x |
+| 22 | 2.908 | 1.586 | 1.321 | 1.83x |
+| 20 | 2.992 | 1.579 | 1.412 | 1.89x |
+| 18 | 2.923 | 1.652 | 1.271 | 1.77x |
+| 16 | 2.920 | 1.603 | 1.318 | 1.82x |
+| 14 | 3.005 | 1.609 | 1.397 | 1.87x |
+| 12 | 2.997 | 1.565 | 1.432 | 1.91x |
+| 10 | 3.140 | 1.543 | 1.597 | 2.04x |
+
+The practical takeaway is that the optimization is not a narrow win for one specific parameter value. The gain remains visible across the evaluated range of `k`.
+
+### 12.5 What these numbers say about the design choices
+
+These measurements validate the design decisions made in the migration:
+
+- moving Kruskal to Cython was the highest-value optimization
+- caching and tightening the reweight backend was still worthwhile, but naturally delivers a smaller gain because that function was already more NumPy-oriented
+- the end-to-end speedup is lower than the Kruskal speedup because `FOSC` remains a significant untouched part of the pipeline
+
+In other words:
+
+- the Cython work removed most of the Python overhead from the MST extraction path
+- the remaining total runtime is now much more influenced by the stages that were not migrated
+
+### 12.6 How to interpret the benchmark responsibly
+
+These numbers should be read as workload-specific results, not as a universal constant.
+
+They depend on factors such as:
+
+- dataset size
+- graph density
+- number of `k` values evaluated
+- machine and compiler characteristics
+- Python, NumPy, and Cython versions
+
+Still, even with those caveats, the relative result is strong enough to support the architectural choice:
+
+- Kruskal is substantially faster with Cython
+- the Core-SG MST stage is materially faster
+- the overall workflow shows a clear practical improvement
