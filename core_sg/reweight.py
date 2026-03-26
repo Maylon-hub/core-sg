@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import weakref
+from warnings import warn
 
 import numpy as np
 
@@ -9,7 +10,10 @@ try:
 except ImportError:
     _reweight_core_sg_from_lookup = None
 
-_METRIC_EDGE_LOOKUP_CACHE: dict[tuple[int, int], tuple[weakref.ReferenceType[np.ndarray], np.ndarray, np.ndarray]] = {}
+_METRIC_EDGE_LOOKUP_CACHE: dict[
+    tuple[int, int], tuple[weakref.ReferenceType[np.ndarray], np.ndarray, np.ndarray]
+] = {}
+_REWEIGHT_CYTHON_WARNING_EMITTED = False
 
 
 def sort_core_sg(core_sg: np.ndarray) -> np.ndarray:
@@ -38,7 +42,9 @@ def sort_core_sg(core_sg: np.ndarray) -> np.ndarray:
     return core_sg_tmp
 
 
-def _build_metric_edge_lookup(metric_edges: np.ndarray, n_nodes: int) -> tuple[np.ndarray, np.ndarray]:
+def _build_metric_edge_lookup(
+    metric_edges: np.ndarray, n_nodes: int
+) -> tuple[np.ndarray, np.ndarray]:
     me = np.ascontiguousarray(metric_edges, dtype=np.float64)
     me_b = me[:, 0].astype(np.int64, copy=False)
     me_s = me[:, 1].astype(np.int64, copy=False)
@@ -52,7 +58,9 @@ def _build_metric_edge_lookup(metric_edges: np.ndarray, n_nodes: int) -> tuple[n
     )
 
 
-def _get_metric_edge_lookup(metric_edges: np.ndarray, n_nodes: int) -> tuple[np.ndarray, np.ndarray]:
+def _get_metric_edge_lookup(
+    metric_edges: np.ndarray, n_nodes: int
+) -> tuple[np.ndarray, np.ndarray]:
     cache_key = (id(metric_edges), int(n_nodes))
     cached = _METRIC_EDGE_LOOKUP_CACHE.get(cache_key)
     if cached is not None:
@@ -122,6 +130,14 @@ def reweight_core_sg_mutual_reachability(
             int(n_nodes),
         )
     else:
+        global _REWEIGHT_CYTHON_WARNING_EMITTED
+        if not _REWEIGHT_CYTHON_WARNING_EMITTED:
+            warn(
+                "Cython backend for reweight_core_sg_mutual_reachability is not available; using the Python fallback implementation.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            _REWEIGHT_CYTHON_WARNING_EMITTED = True
         e = _reweight_core_sg_python(
             core_sg,
             core_k,

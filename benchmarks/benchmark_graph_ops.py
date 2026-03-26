@@ -27,24 +27,32 @@ def benchmark_case(n_samples: int, k_max: int, n_features: int, centers: int) ->
         core_sg, core_k, metric_edges, n_nodes=n_samples
     )
 
-    kruskal_time = min(
-        timeit.repeat(lambda: kruskal_mst(weighted, n_nodes=n_samples), number=5, repeat=5)
-    ) / 5
+    kruskal_time = (
+        min(
+            timeit.repeat(
+                lambda: kruskal_mst(weighted, n_nodes=n_samples), number=5, repeat=5
+            )
+        )
+        / 5
+    )
     reweight_first = timeit.timeit(
         lambda: reweight_core_sg_mutual_reachability(
             core_sg, core_k, metric_edges, n_nodes=n_samples
         ),
         number=1,
     )
-    reweight_repeat = min(
-        timeit.repeat(
-            lambda: reweight_core_sg_mutual_reachability(
-                core_sg, core_k, metric_edges, n_nodes=n_samples
-            ),
-            number=5,
-            repeat=5,
+    reweight_repeat = (
+        min(
+            timeit.repeat(
+                lambda: reweight_core_sg_mutual_reachability(
+                    core_sg, core_k, metric_edges, n_nodes=n_samples
+                ),
+                number=5,
+                repeat=5,
+            )
         )
-    ) / 5
+        / 5
+    )
     full_flow_time = min(
         timeit.repeat(
             lambda: mst_from_core_sg(core_sg, metric_edges, core_k_list, n_samples, k),

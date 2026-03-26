@@ -1,12 +1,16 @@
 # core_sg/mst_kruskal.py
 from __future__ import annotations
 
+from warnings import warn
+
 import numpy as np
 
 try:
     from ._mst_kruskal import kruskal_mst_impl as _kruskal_mst_impl
 except ImportError:
     _kruskal_mst_impl = None
+
+_KRUSKAL_CYTHON_WARNING_EMITTED = False
 
 # Evita keyword "from". Mantém padrão claro e compatível.
 MST_EDGE_DTYPE = np.dtype([("u", np.int64), ("v", np.int64), ("distance", np.float64)])
@@ -101,4 +105,12 @@ def kruskal_mst(edges: np.ndarray, n_nodes: int) -> np.recarray:
         raise ValueError("n_nodes must be >= 2.")
     if _kruskal_mst_impl is not None:
         return _kruskal_mst_impl(e, n_nodes, MST_EDGE_DTYPE)
+    global _KRUSKAL_CYTHON_WARNING_EMITTED
+    if not _KRUSKAL_CYTHON_WARNING_EMITTED:
+        warn(
+            "Cython backend for kruskal_mst is not available; using the Python fallback implementation.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        _KRUSKAL_CYTHON_WARNING_EMITTED = True
     return _kruskal_mst_python(e, n_nodes)
