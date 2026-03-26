@@ -143,12 +143,15 @@ class TestCoreSGHierarchy:
             dtype=np.float64,
         )
 
-        def fake_mst_from_core_sg(core_sg, metric_edges, core_k_list, n_nodes, k):
+        def fake_mst_from_core_sg(
+            core_sg, metric_edges, core_k_list, n_nodes, k, debug
+        ):
             assert core_sg is obj._core_sg
             assert metric_edges is obj._metric_edges
             assert core_k_list is obj._core_k_list
             assert n_nodes == obj.n
             assert k == 3
+            assert debug == obj.debug
             return mst_small
 
         monkeypatch.setattr(core_sg_module, "mst_from_core_sg", fake_mst_from_core_sg)

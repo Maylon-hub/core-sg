@@ -1,23 +1,21 @@
 from __future__ import annotations
-import numpy as np
-import hdbscan
-from sklearn.metrics import pairwise_distances
+
 from time import time
-import pandas as pd
 from typing import Any
 from warnings import warn
 
+import hdbscan
+import numpy as np
+import pandas as pd
+from hdbscan._hdbscan_linkage import label
+from hdbscan.hdbscan_ import _tree_to_labels
+from hdbscan.plots import CondensedTree, MinimumSpanningTree, SingleLinkageTree
+from sklearn.metrics import pairwise_distances
 
+from .edges import add_mst_edges_to_metric_edges, build_knng_vectors
 from .knn import knn_from_precomputed
-from .edges import build_knng_vectors, add_mst_edges_to_metric_edges
 from .mst_kruskal import kruskal_mst
 from .reweight import reweight_core_sg_mutual_reachability, sort_core_sg
-
-from hdbscan.hdbscan_ import _tree_to_labels
-from hdbscan._hdbscan_linkage import label
-from hdbscan.plots import MinimumSpanningTree
-from hdbscan.plots import SingleLinkageTree
-from hdbscan.plots import CondensedTree
 
 
 def hdbscan_reference_mst_original_distance(D: np.ndarray, k_max: int) -> np.ndarray:
@@ -150,6 +148,7 @@ def mst_from_core_sg(
     core_k_list: np.ndarray,
     n_nodes: int,
     k: int,
+    debug: bool = False,
 ):
     """
     Reweight -> Kruskal ->
@@ -162,6 +161,7 @@ def mst_from_core_sg(
     if k < 2:
         raise ValueError("k_max deve ser >= 2 para reproduzir min_samples do HDBSCAN.")
 
+    t0 = time()
     core_k = core_k_list[:, k - 1]
     core_k = np.ascontiguousarray(core_k, dtype=np.float64)
     weighted = reweight_core_sg_mutual_reachability(
@@ -171,11 +171,19 @@ def mst_from_core_sg(
         n_nodes=n_nodes,
     )
 
+    if debug:
+        t1 = time()
+        print(f"REWEIGHT Core_SG = {k} done in {t1 - t0:.2f}s")
+
+    t0 = time()
     mst_rec = kruskal_mst(weighted, n_nodes=n_nodes)
     mst_arr = np.column_stack([mst_rec.u, mst_rec.v, mst_rec.distance]).astype(
         np.float64, copy=False
     )
     mst_arr = mst_arr[np.argsort(mst_arr[:, 2], kind="mergesort")]
+    if debug:
+        t1 = time()
+        print(f"KRUSKAL Core_SG = {k} done in {t1 - t0:.2f}s")
 
     return mst_arr
 
@@ -706,6 +714,7 @@ class CoreSG:
             core_k_list=self._core_k_list,
             n_nodes=self.n,
             k=k,
+            debug=self.debug,
         )
         t1 = time()
 
