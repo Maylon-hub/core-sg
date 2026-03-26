@@ -58,6 +58,12 @@ jobs:
       - name: Format check
         run: python -m ruff format --check .
 
+      - name: Build distributions
+        run: python -m build
+
+      - name: Check distributions
+        run: python -m twine check dist/*
+
       - name: Run coverage
         run: pytest tests -v -ra --cov=core_sg --cov-report=term-missing --cov-report=xml
 

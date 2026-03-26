@@ -74,8 +74,10 @@ Before opening a pull request, make sure the local quality checks pass.
 ```
 pytest tests -v -ra
 pytest tests -v -ra --cov=core_sg --cov-report=term-missing
-ruff check core_sg tests setup.py
-ruff format --check core_sg tests setup.py
+python -m build
+python -m twine check dist/*
+ruff check core_sg tests
+ruff format --check core_sg tests
 ```
 
 ### 4. Open a Pull Request to `develop`
@@ -137,7 +139,7 @@ Use versions such as:
 
 ### Preparing a pre-release
 
-Update the package version on `develop`, commit the change, and push it.
+Update the package version in `pyproject.toml` on `develop`, commit the change, and push it.
 
 ```
 git checkout develop
@@ -191,7 +193,7 @@ Examples:
 
 ### Preparing the final release
 
-Update the version on `develop`, commit, and push:
+Update the version in `pyproject.toml` on `develop`, commit, and push:
 
 ```
 git checkout develop

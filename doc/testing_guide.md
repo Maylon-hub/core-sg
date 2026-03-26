@@ -23,7 +23,7 @@ Because the project is a graph- and MST-focused companion library for HDBSCAN-st
 
 ## 2. Dependencies used to run tests locally
 
-The repository metadata currently exposes a dedicated `test` extra in `setup.py`, with:
+The repository metadata currently exposes a dedicated `test` extra in `pyproject.toml`, with:
 
 - `pytest>=8.0`
 - `pytest-cov>=5.0`
@@ -32,7 +32,7 @@ The development extra also includes:
 
 - `ruff`
 
-The runtime dependencies used by the library are listed in `requirements.txt` and include:
+The runtime dependencies used by the library are declared in `pyproject.toml` and include:
 
 - `numpy`
 - `pandas`
@@ -55,7 +55,7 @@ If the development extra is preferred, this also works:
 pip install -e ".[dev]"
 ```
 
-Both approaches are consistent with the package metadata currently defined in `setup.py`.
+Both approaches are consistent with the package metadata currently defined in `pyproject.toml`.
 
 ## 4. How to run tests locally
 
@@ -74,8 +74,15 @@ pytest --cov=core_sg --cov-report=term-missing
 To run the lint and formatting checks enforced by CI:
 
 ```bash
-ruff check core_sg tests setup.py
-ruff format --check core_sg tests setup.py
+ruff check core_sg tests
+ruff format --check core_sg tests
+```
+
+To validate the package build and metadata locally:
+
+```bash
+python -m build
+python -m twine check dist/*
 ```
 
 To run tests by category:
