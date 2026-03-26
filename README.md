@@ -13,17 +13,17 @@ Core-SG is ideal for exploratory multi-`k` density-based analysis; it is a pract
 
 Based on the papers:
 
-``
-Antonio Cavalcante Araujo Neto, Murilo Coelho Naldi, Ricardo J. G. B. Campello, and Jorg Sander. CORE-SG: Efficient Computation of Multiple MSTs for Density-Based Methods. In: 2022 IEEE 38th International Conference on Data Engineering (ICDE), IEEE, pp. 951-964. 2022.
-``
 
-``
-Leland McInnes and John Healy. Accelerated Hierarchical Density Based Clustering. In: 2017 IEEE International Conference on Data Mining Workshops (ICDMW), IEEE, pp. 33-42. 2017.
-``
+>Antonio Cavalcante Araujo Neto, Murilo Coelho Naldi, Ricardo J. G. B. Campello, and Jorg Sander. CORE-SG: Efficient Computation of Multiple MSTs for Density-Based Methods. In: 2022 IEEE 38th International Conference on Data Engineering (ICDE), IEEE, pp. 951-964. 2022.
 
-``
-R. Campello, D. Moulavi, and J. Sander. Density-Based Clustering Based on Hierarchical Density Estimates. In: Advances in Knowledge Discovery and Data Mining, Springer, pp. 160-172. 2013.
-``
+
+
+>Leland McInnes and John Healy. Accelerated Hierarchical Density Based Clustering. In: 2017 IEEE International Conference on Data Mining Workshops (ICDMW), IEEE, pp. 33-42. 2017.
+
+
+
+>R. Campello, D. Moulavi, and J. Sander. Density-Based Clustering Based on Hierarchical Density Estimates. In: Advances in Knowledge Discovery and Data Mining, Springer, pp. 160-172. 2013.
+
 
 Documentation and project overview are available in this repository. Notebooks comparing Core-SG to HDBSCAN and illustrating the intended multi-`k` workflow are available in [`notebooks/`](notebooks/).
 

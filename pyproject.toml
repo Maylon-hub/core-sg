@@ -1,5 +1,7 @@
 [build-system]
 requires = [
+  "cython>=3.0",
+  "numpy>=1.24,<3",
   "setuptools>=77",
   "wheel"
 ]
@@ -67,6 +69,10 @@ Documentation = "https://github.com/midas-core-sg/core-sg#readme"
 [tool.setuptools]
 include-package-data = true
 zip-safe = false
+ext-modules = [
+  {name = "core_sg._mst_kruskal", sources = ["core_sg/_mst_kruskal.pyx"]},
+  {name = "core_sg._reweight", sources = ["core_sg/_reweight.pyx"]},
+]
 
 [tool.setuptools.packages.find]
 include = ["core_sg", "core_sg.*"]

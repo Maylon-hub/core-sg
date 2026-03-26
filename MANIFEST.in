@@ -1,4 +1,12 @@
 include README.md
 include LICENSE
 recursive-include core_sg *.py
+recursive-include core_sg *.pyx
+prune build
+global-exclude *.c
+global-exclude *.cpp
+global-exclude *.so
+global-exclude *.pyd
+global-exclude *.dll
 recursive-include tests *.py
+recursive-include benchmarks *.py
