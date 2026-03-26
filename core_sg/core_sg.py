@@ -1,23 +1,21 @@
 from __future__ import annotations
-import numpy as np
-import hdbscan
-from sklearn.metrics import pairwise_distances
+
 from time import time
-import pandas as pd
 from typing import Any
 from warnings import warn
 
+import hdbscan
+import numpy as np
+import pandas as pd
+from hdbscan._hdbscan_linkage import label
+from hdbscan.hdbscan_ import _tree_to_labels
+from hdbscan.plots import CondensedTree, MinimumSpanningTree, SingleLinkageTree
+from sklearn.metrics import pairwise_distances
 
+from .edges import add_mst_edges_to_metric_edges, build_knng_vectors
 from .knn import knn_from_precomputed
-from .edges import build_knng_vectors, add_mst_edges_to_metric_edges
 from .mst_kruskal import kruskal_mst
 from .reweight import reweight_core_sg_mutual_reachability, sort_core_sg
-
-from hdbscan.hdbscan_ import _tree_to_labels
-from hdbscan._hdbscan_linkage import label
-from hdbscan.plots import MinimumSpanningTree
-from hdbscan.plots import SingleLinkageTree
-from hdbscan.plots import CondensedTree
 
 
 def hdbscan_reference_mst_original_distance(D: np.ndarray, k_max: int) -> np.ndarray:
@@ -150,7 +148,7 @@ def mst_from_core_sg(
     core_k_list: np.ndarray,
     n_nodes: int,
     k: int,
-    debug: bool = False
+    debug: bool = False,
 ):
     """
     Reweight -> Kruskal ->
@@ -716,7 +714,7 @@ class CoreSG:
             core_k_list=self._core_k_list,
             n_nodes=self.n,
             k=k,
-            debug=self.debug
+            debug=self.debug,
         )
         t1 = time()
 
