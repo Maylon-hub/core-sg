@@ -1,17 +1,22 @@
 # core_sg/mst_kruskal.py
 from __future__ import annotations
 
+from warnings import warn
+
 import numpy as np
+
+try:
+    from ._mst_kruskal import kruskal_mst_impl as _kruskal_mst_impl
+except ImportError:
+    _kruskal_mst_impl = None
+
+_KRUSKAL_CYTHON_WARNING_EMITTED = False
 
 # Evita keyword "from". Mantém padrão claro e compatível.
 MST_EDGE_DTYPE = np.dtype([("u", np.int64), ("v", np.int64), ("distance", np.float64)])
 
 
 class UnionFind:
-    """
-    Union-Find with path compression + union by rank.
-    """
-
     __slots__ = ("parent", "rank")
 
     def __init__(self, n: int):
@@ -20,7 +25,6 @@ class UnionFind:
 
     def find(self, x: int) -> int:
         parent = self.parent
-        # Path halving (geralmente mais rápido)
         while parent[x] != x:
             parent[x] = parent[parent[x]]
             x = parent[x]
@@ -35,7 +39,6 @@ class UnionFind:
         if ra == rb:
             return False
 
-        # Union by rank
         if rank[ra] < rank[rb]:
             parent[ra] = rb
         elif rank[ra] > rank[rb]:
@@ -44,6 +47,46 @@ class UnionFind:
             parent[rb] = ra
             rank[ra] += 1
         return True
+
+
+def _kruskal_mst_python(edges: np.ndarray, n_nodes: int) -> np.recarray:
+    e = np.asarray(edges)
+    u_all = np.asarray(e[:, 0], dtype=np.int64)
+    v_all = np.asarray(e[:, 1], dtype=np.int64)
+    w_all = np.asarray(e[:, 2], dtype=np.float64)
+
+    order = np.lexsort((u_all, v_all, w_all))
+    u_all = u_all[order]
+    v_all = v_all[order]
+    w_all = w_all[order]
+
+    uf = UnionFind(n_nodes)
+
+    mst_u = np.empty(n_nodes - 1, dtype=np.int64)
+    mst_v = np.empty(n_nodes - 1, dtype=np.int64)
+    mst_w = np.empty(n_nodes - 1, dtype=np.float64)
+
+    union = uf.union
+    m = 0
+    for i in range(w_all.size):
+        ui = int(u_all[i])
+        vi = int(v_all[i])
+        if union(ui, vi):
+            mst_u[m] = ui
+            mst_v[m] = vi
+            mst_w[m] = w_all[i]
+            m += 1
+            if m == n_nodes - 1:
+                break
+
+    if m != n_nodes - 1:
+        raise ValueError("Disconex Graph: MST extraction is not possible.")
+
+    out = np.empty(n_nodes - 1, dtype=MST_EDGE_DTYPE).view(np.recarray)
+    out.u = mst_u
+    out.v = mst_v
+    out.distance = mst_w
+    return out
 
 
 def kruskal_mst(edges: np.ndarray, n_nodes: int) -> np.recarray:
@@ -60,48 +103,14 @@ def kruskal_mst(edges: np.ndarray, n_nodes: int) -> np.recarray:
         raise ValueError("edges must have shape (E,3) with columns [u, v, w].")
     if n_nodes <= 1:
         raise ValueError("n_nodes must be >= 2.")
-
-    # Colunas (sem forçar float64 em tudo; só o peso precisa ser float64)
-    u_all = np.asarray(e[:, 0], dtype=np.int64)
-    v_all = np.asarray(e[:, 1], dtype=np.int64)
-    w_all = np.asarray(e[:, 2], dtype=np.float64)
-
-    # Ordena por peso (Kruskal)
-    order = np.lexsort((u_all, v_all, w_all))
-    # order = np.argsort(w_all, kind="mergesort") #-> Gera Inconsistência com o HDBSCAN referencia
-    u_all = u_all[order]
-    v_all = v_all[order]
-    w_all = w_all[order]
-
-    uf = UnionFind(n_nodes)
-
-    # Prealoca saída em vetores (muito mais rápido que recarray record-by-record)
-    mst_u = np.empty(n_nodes - 1, dtype=np.int64)
-    mst_v = np.empty(n_nodes - 1, dtype=np.int64)
-    mst_w = np.empty(n_nodes - 1, dtype=np.float64)
-
-    # Locals para performance
-    union = uf.union
-    m = 0
-
-    # Loop principal
-    for i in range(w_all.size):
-        ui = int(u_all[i])
-        vi = int(v_all[i])
-        if union(ui, vi):
-            mst_u[m] = ui
-            mst_v[m] = vi
-            mst_w[m] = w_all[i]
-            m += 1
-            if m == n_nodes - 1:
-                break
-
-    if m != n_nodes - 1:
-        raise ValueError("Disconex Graph: MST extraction is not possible.")
-
-    # Materializa structured array só no final (barato)
-    out = np.empty(n_nodes - 1, dtype=MST_EDGE_DTYPE).view(np.recarray)
-    out.u = mst_u
-    out.v = mst_v
-    out.distance = mst_w
-    return out
+    if _kruskal_mst_impl is not None:
+        return _kruskal_mst_impl(e, n_nodes, MST_EDGE_DTYPE)
+    global _KRUSKAL_CYTHON_WARNING_EMITTED
+    if not _KRUSKAL_CYTHON_WARNING_EMITTED:
+        warn(
+            "Cython backend for kruskal_mst is not available; using the Python fallback implementation.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        _KRUSKAL_CYTHON_WARNING_EMITTED = True
+    return _kruskal_mst_python(e, n_nodes)
