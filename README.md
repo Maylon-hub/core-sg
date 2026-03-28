@@ -178,6 +178,10 @@ Core-SG is structurally inspired by and technically based on the `hdbscan` ecosy
 - HDBSCAN repository: https://github.com/scikit-learn-contrib/hdbscan
 - HDBSCAN documentation: https://hdbscan.readthedocs.io/en/latest/
 
+Core-SG also interoperates with internal `hdbscan` APIs to reconstruct and
+expose HDBSCAN-style hierarchy artifacts. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)
+for third-party attribution and the reproduced upstream BSD-3-Clause notice.
+
 ## Citing
 
 If you use Core-SG in scientific or technical work, please cite the Core-SG paper:
@@ -198,6 +202,9 @@ If you use Core-SG in scientific or technical work, please cite the Core-SG pape
 ## License
 
 Core-SG is licensed under the BSD 3-Clause License. See [LICENSE](LICENSE) for details.
+
+This repository also includes third-party attribution and license information
+for `hdbscan` in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 ## References
 
