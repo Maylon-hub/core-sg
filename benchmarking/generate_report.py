@@ -362,7 +362,7 @@ def save_coresg_breakdown_plot(summary: pd.DataFrame) -> Path:
     subset = summary[summary["method"].isin(CORESG_METHODS)].copy()
     sample_sizes = sorted(subset["n_samples"].unique())
 
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5), sharey=True)
+    fig, axes = plt.subplots(1, 2, figsize=(15, 6), sharey=True)
     colors = {"fit": "#4c78a8", "extract": "#f58518"}
 
     for axis, method in zip(axes, CORESG_METHODS):
@@ -381,16 +381,28 @@ def save_coresg_breakdown_plot(summary: pd.DataFrame) -> Path:
             color=colors["extract"],
             label="Sum of MST extraction times",
         )
-        axis.set_title(METHOD_LABELS[method].replace("CoreSG MST extraction ", ""))
+        axis.set_title(
+            METHOD_LABELS[method].replace("CoreSG MST extraction ", ""),
+            fontsize=11,
+            pad=10,
+        )
         axis.set_xticks(list(positions), [f"{n:,}" for n in sample_sizes])
         axis.set_xlabel("Number of samples")
+        axis.tick_params(axis="x", labelrotation=0, labelsize=10)
         axis.grid(True, axis="y", alpha=0.25)
 
     axes[0].set_ylabel("Seconds")
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper center", ncol=2, frameon=False)
-    fig.suptitle("CoreSG cumulative runtime breakdown", fontsize=14, y=1.02)
-    fig.tight_layout()
+    fig.legend(
+        handles,
+        labels,
+        loc="upper center",
+        ncol=2,
+        frameon=False,
+        bbox_to_anchor=(0.5, 0.98),
+    )
+    fig.suptitle("CoreSG cumulative runtime breakdown", fontsize=14, y=1.04)
+    fig.tight_layout(rect=(0, 0, 1, 0.84))
 
     output_path = ASSETS_DIR / "coresg_runtime_breakdown.png"
     fig.savefig(output_path, dpi=220, bbox_inches="tight")
