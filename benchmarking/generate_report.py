@@ -213,9 +213,7 @@ def build_best_coresg_comparisons(summary: pd.DataFrame) -> dict[str, pd.DataFra
     best_coresg_method = "CoreSG_fitMatchRef_true_extractMatchRef_false"
     method_tables: dict[str, pd.DataFrame] = {}
 
-    other_methods = [
-        method for method in DISPLAY_ORDER if method != best_coresg_method
-    ]
+    other_methods = [method for method in DISPLAY_ORDER if method != best_coresg_method]
     for other_method in other_methods:
         rows: list[dict[str, float | int | str]] = []
         for n_samples, group in summary.groupby("n_samples", sort=True):
@@ -243,9 +241,7 @@ def build_best_coresg_comparisons(summary: pd.DataFrame) -> dict[str, pd.DataFra
                     "CoreSG std (s)": float(core_row["cumulative_total_std_seconds"]),
                     "Compared method": METHOD_LABELS[other_method],
                     "Method mean (s)": float(other_row["cumulative_total_seconds"]),
-                    "Method std (s)": float(
-                        other_row["cumulative_total_std_seconds"]
-                    ),
+                    "Method std (s)": float(other_row["cumulative_total_std_seconds"]),
                     "Absolute gap (s)": float(absolute_gap),
                     "Speedup": float(speedup),
                     "Runtime reduction (%)": float(reduction_pct),
@@ -270,12 +266,14 @@ def save_per_k_plot(df: pd.DataFrame) -> Path:
             | (((subset["k_max"] - subset["k"]) % 5) == 0)
         ].copy()
         subset["comparison_seconds"] = subset.apply(
-            lambda row: row["total_seconds"]
-            if row["method"] not in CORESG_METHODS
-            else (
-                row["fit_seconds"] + row["extract_seconds"]
-                if int(row["k"]) == int(row["k_max"])
-                else row["extract_seconds"]
+            lambda row: (
+                row["total_seconds"]
+                if row["method"] not in CORESG_METHODS
+                else (
+                    row["fit_seconds"] + row["extract_seconds"]
+                    if int(row["k"]) == int(row["k_max"])
+                    else row["extract_seconds"]
+                )
             ),
             axis=1,
         )
@@ -412,9 +410,7 @@ def save_coresg_breakdown_plot(summary: pd.DataFrame) -> Path:
 
 def save_speedup_heatmap(pairwise_speedups: pd.DataFrame) -> Path:
     best_coresg = "CoreSG MST extraction (extractMatchRef=false)"
-    subset = pairwise_speedups[
-        pairwise_speedups["coresg_method"] == best_coresg
-    ].copy()
+    subset = pairwise_speedups[pairwise_speedups["coresg_method"] == best_coresg].copy()
     pivot = subset.pivot(
         index="n_samples", columns="hdbscan_method", values="speedup_x"
     ).sort_index()
@@ -679,7 +675,7 @@ Figure 2 shows the cumulative mean runtime required to complete the entire multi
 
 ![Cumulative runtime by sample size](./{cumulative_plot.relative_to(BENCHMARK_DIR).as_posix()})
 
-The cumulative curves confirm that the one-time CoreSG construction cost is amortized by repeated reuse. Even though CoreSG pays a larger up-front cost than a single MST extraction, the total cost over all `{n_k_values}` values of `k` remains substantially lower than repeated HDBSCAN executions. At `n=40000`, for instance, the best CoreSG configuration completes the whole workload in **{format_seconds(float(best_summary.loc[best_summary['n_samples'] == 40000, 'coresg_total_seconds'].iloc[0]))} s**, compared with **{format_seconds(float(best_summary.loc[best_summary['n_samples'] == 40000, 'hdbscan_total_seconds'].iloc[0]))} s** for the best HDBSCAN baseline.
+The cumulative curves confirm that the one-time CoreSG construction cost is amortized by repeated reuse. Even though CoreSG pays a larger up-front cost than a single MST extraction, the total cost over all `{n_k_values}` values of `k` remains substantially lower than repeated HDBSCAN executions. At `n=40000`, for instance, the best CoreSG configuration completes the whole workload in **{format_seconds(float(best_summary.loc[best_summary["n_samples"] == 40000, "coresg_total_seconds"].iloc[0]))} s**, compared with **{format_seconds(float(best_summary.loc[best_summary["n_samples"] == 40000, "hdbscan_total_seconds"].iloc[0]))} s** for the best HDBSCAN baseline.
 
 ### 3.4 CoreSG Cost Decomposition
 
