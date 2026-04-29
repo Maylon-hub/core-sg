@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+# Third-party attribution:
+# This module interoperates with the BSD-3-Clause licensed `hdbscan` project
+# and imports selected internal APIs for compatibility with HDBSCAN-style
+# hierarchy outputs. See the repository-level THIRD_PARTY_NOTICES.md file.
+
 from time import time
 from typing import Any
 from warnings import warn
