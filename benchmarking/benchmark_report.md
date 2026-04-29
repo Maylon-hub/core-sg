@@ -16,7 +16,7 @@ The central hypothesis is that CoreSG pays a higher up-front construction cost, 
 
 The CSV files in [`benchmarking/`](./) cover synthetic datasets with the following settings:
 
-- `n_samples` in `{1000, 5000, 10000, 20000, 30000, 40000}`
+- `n_samples` in `{1000, 5000, 10000, 20000, 30000, 40000, 50000}`
 - `n_features = 20`
 - `centers = 10`
 - `seed = 42`
@@ -67,6 +67,7 @@ The fastest CoreSG configuration is consistently **`extractMatchRef=false`**, an
 | 20000 | CoreSG MST extraction (extractMatchRef=false) | 100.21 ± 0.16 | HDBSCAN best (matchRef=false) | 331.03 ± 0.54 | 3.30x | 69.7% |
 | 30000 | CoreSG MST extraction (extractMatchRef=false) | 191.72 ± 0.49 | HDBSCAN best (matchRef=false) | 542.19 ± 0.65 | 2.83x | 64.6% |
 | 40000 | CoreSG MST extraction (extractMatchRef=false) | 381.33 ± 24.86 | HDBSCAN best (matchRef=false) | 980.50 ± 10.10 | 2.57x | 61.1% |
+| 50000 | CoreSG MST extraction (extractMatchRef=false) | 525.45 ± 34.21 | HDBSCAN best (matchRef=false) | 1342.44 ± 16.98 | 2.55x | 60.9% |
 
 These results show that CoreSG already becomes advantageous at `n=1000` and that the cumulative advantage generally increases with dataset size. The most favorable point against the best HDBSCAN baseline occurs at `n=20000`, where CoreSG reaches **3.30x** speedup and **69.7%** cumulative runtime reduction.
 
@@ -100,7 +101,7 @@ Figure 4 reports the speedup of the fastest CoreSG configuration over each HDBSC
 
 ![Speedup heatmap](./report_assets/speedup_heatmap.png)
 
-The heatmap reinforces two conclusions. First, CoreSG is faster than every HDBSCAN variant in the repeated multi-`k` scenario. Second, the largest gains occur against the generic HDBSCAN variants, where the cumulative execution penalty is especially high. On average, `HDBSCAN generic (matchRef=false)` is about **4.12x** slower than `HDBSCAN best (matchRef=false)` even before considering the additional CoreSG advantage.
+The heatmap reinforces two conclusions. First, CoreSG is faster than every HDBSCAN variant in the repeated multi-`k` scenario. Second, the largest gains occur against the generic HDBSCAN variants, where the cumulative execution penalty is especially high. On average, `HDBSCAN generic (matchRef=false)` is about **4.52x** slower than `HDBSCAN best (matchRef=false)` even before considering the additional CoreSG advantage.
 
 ## 4. Detailed Pairwise Analysis
 
@@ -117,8 +118,9 @@ This section compares the best CoreSG configuration, **CoreSG MST extraction (`e
 | 20000 | 100.21 | 0.16 | CoreSG MST extraction (extractMatchRef=true) | 141.25 | 0.23 | 41.04 | 1.41x | 29.1% |
 | 30000 | 191.72 | 0.49 | CoreSG MST extraction (extractMatchRef=true) | 296.81 | 1.65 | 105.09 | 1.55x | 35.4% |
 | 40000 | 381.33 | 24.86 | CoreSG MST extraction (extractMatchRef=true) | 597.55 | 19.58 | 216.23 | 1.57x | 36.2% |
+| 50000 | 525.45 | 34.21 | CoreSG MST extraction (extractMatchRef=true) | 971.22 | 41.82 | 445.78 | 1.85x | 45.9% |
 
-CoreSG is faster than **CoreSG MST extraction (extractMatchRef=true)** for every tested dataset size. The advantage ranges from **1.14x** at `n=1000` to **1.57x** at `n=40000`. In absolute terms, the largest time gap appears at `n=40000`, where CoreSG saves **216.23 s** over the full multi-`k` experiment.
+CoreSG is faster than **CoreSG MST extraction (extractMatchRef=true)** for every tested dataset size. The advantage ranges from **1.14x** at `n=1000` to **1.85x** at `n=50000`. In absolute terms, the largest time gap appears at `n=50000`, where CoreSG saves **445.78 s** over the full multi-`k` experiment.
 
 
 ### Best CoreSG vs. HDBSCAN best (matchRef=false)
@@ -131,8 +133,9 @@ CoreSG is faster than **CoreSG MST extraction (extractMatchRef=true)** for every
 | 20000 | 100.21 | 0.16 | HDBSCAN best (matchRef=false) | 331.03 | 0.54 | 230.81 | 3.30x | 69.7% |
 | 30000 | 191.72 | 0.49 | HDBSCAN best (matchRef=false) | 542.19 | 0.65 | 350.48 | 2.83x | 64.6% |
 | 40000 | 381.33 | 24.86 | HDBSCAN best (matchRef=false) | 980.50 | 10.10 | 599.18 | 2.57x | 61.1% |
+| 50000 | 525.45 | 34.21 | HDBSCAN best (matchRef=false) | 1342.44 | 16.98 | 817.00 | 2.55x | 60.9% |
 
-CoreSG is faster than **HDBSCAN best (matchRef=false)** for every tested dataset size. The advantage ranges from **1.36x** at `n=1000` to **3.30x** at `n=20000`. In absolute terms, the largest time gap appears at `n=40000`, where CoreSG saves **599.18 s** over the full multi-`k` experiment.
+CoreSG is faster than **HDBSCAN best (matchRef=false)** for every tested dataset size. The advantage ranges from **1.36x** at `n=1000` to **3.30x** at `n=20000`. In absolute terms, the largest time gap appears at `n=50000`, where CoreSG saves **817.00 s** over the full multi-`k` experiment.
 
 
 ### Best CoreSG vs. HDBSCAN best (matchRef=true)
@@ -145,8 +148,9 @@ CoreSG is faster than **HDBSCAN best (matchRef=false)** for every tested dataset
 | 20000 | 100.21 | 0.16 | HDBSCAN best (matchRef=true) | 372.93 | 0.57 | 272.71 | 3.72x | 73.1% |
 | 30000 | 191.72 | 0.49 | HDBSCAN best (matchRef=true) | 665.30 | 8.97 | 473.58 | 3.47x | 71.2% |
 | 40000 | 381.33 | 24.86 | HDBSCAN best (matchRef=true) | 1216.81 | 2.46 | 835.48 | 3.19x | 68.7% |
+| 50000 | 525.45 | 34.21 | HDBSCAN best (matchRef=true) | 1718.93 | 3.90 | 1193.48 | 3.27x | 69.4% |
 
-CoreSG is faster than **HDBSCAN best (matchRef=true)** for every tested dataset size. The advantage ranges from **1.49x** at `n=1000` to **3.72x** at `n=20000`. In absolute terms, the largest time gap appears at `n=40000`, where CoreSG saves **835.48 s** over the full multi-`k` experiment.
+CoreSG is faster than **HDBSCAN best (matchRef=true)** for every tested dataset size. The advantage ranges from **1.49x** at `n=1000` to **3.72x** at `n=20000`. In absolute terms, the largest time gap appears at `n=50000`, where CoreSG saves **1193.48 s** over the full multi-`k` experiment.
 
 
 ### Best CoreSG vs. HDBSCAN generic (matchRef=false)
@@ -159,8 +163,9 @@ CoreSG is faster than **HDBSCAN best (matchRef=true)** for every tested dataset 
 | 20000 | 100.21 | 0.16 | HDBSCAN generic (matchRef=false) | 1429.84 | 30.68 | 1329.62 | 14.27x | 93.0% |
 | 30000 | 191.72 | 0.49 | HDBSCAN generic (matchRef=false) | 2894.76 | 3.89 | 2703.04 | 15.10x | 93.4% |
 | 40000 | 381.33 | 24.86 | HDBSCAN generic (matchRef=false) | 6747.33 | 17.73 | 6366.01 | 17.69x | 94.3% |
+| 50000 | 525.45 | 34.21 | HDBSCAN generic (matchRef=false) | 9272.92 | 23.85 | 8747.47 | 17.65x | 94.3% |
 
-CoreSG is faster than **HDBSCAN generic (matchRef=false)** for every tested dataset size. The advantage ranges from **3.68x** at `n=1000` to **17.69x** at `n=40000`. In absolute terms, the largest time gap appears at `n=40000`, where CoreSG saves **6366.01 s** over the full multi-`k` experiment.
+CoreSG is faster than **HDBSCAN generic (matchRef=false)** for every tested dataset size. The advantage ranges from **3.68x** at `n=1000` to **17.69x** at `n=40000`. In absolute terms, the largest time gap appears at `n=50000`, where CoreSG saves **8747.47 s** over the full multi-`k` experiment.
 
 
 ### Best CoreSG vs. HDBSCAN generic (matchRef=true)
@@ -173,8 +178,9 @@ CoreSG is faster than **HDBSCAN generic (matchRef=false)** for every tested data
 | 20000 | 100.21 | 0.16 | HDBSCAN generic (matchRef=true) | 1323.41 | 1.18 | 1223.20 | 13.21x | 92.4% |
 | 30000 | 191.72 | 0.49 | HDBSCAN generic (matchRef=true) | 3015.08 | 17.94 | 2823.37 | 15.73x | 93.6% |
 | 40000 | 381.33 | 24.86 | HDBSCAN generic (matchRef=true) | 7181.05 | 51.97 | 6799.72 | 18.83x | 94.7% |
+| 50000 | 525.45 | 34.21 | HDBSCAN generic (matchRef=true) | 9580.93 | 60.08 | 9055.48 | 18.23x | 94.5% |
 
-CoreSG is faster than **HDBSCAN generic (matchRef=true)** for every tested dataset size. The advantage ranges from **4.05x** at `n=1000` to **18.83x** at `n=40000`. In absolute terms, the largest time gap appears at `n=40000`, where CoreSG saves **6799.72 s** over the full multi-`k` experiment.
+CoreSG is faster than **HDBSCAN generic (matchRef=true)** for every tested dataset size. The advantage ranges from **4.05x** at `n=1000` to **18.83x** at `n=40000`. In absolute terms, the largest time gap appears at `n=50000`, where CoreSG saves **9055.48 s** over the full multi-`k` experiment.
 
 
 ## 5. Full Cumulative Statistics
@@ -217,6 +223,12 @@ CoreSG is faster than **HDBSCAN generic (matchRef=true)** for every tested datas
 | 40000 | HDBSCAN best (matchRef=true) | - | - | - | - | 1216.81 | 2.46 | 49 |
 | 40000 | HDBSCAN generic (matchRef=false) | - | - | - | - | 6747.33 | 17.73 | 49 |
 | 40000 | HDBSCAN generic (matchRef=true) | - | - | - | - | 7181.05 | 51.97 | 49 |
+| 50000 | CoreSG MST extraction (extractMatchRef=false) | 329.61 | 34.21 | 195.84 | 0.26 | 525.45 | 34.21 | 49 |
+| 50000 | CoreSG MST extraction (extractMatchRef=true) | 367.84 | 41.70 | 603.39 | 3.19 | 971.22 | 41.82 | 49 |
+| 50000 | HDBSCAN best (matchRef=false) | - | - | - | - | 1342.44 | 16.98 | 49 |
+| 50000 | HDBSCAN best (matchRef=true) | - | - | - | - | 1718.93 | 3.90 | 49 |
+| 50000 | HDBSCAN generic (matchRef=false) | - | - | - | - | 9272.92 | 23.85 | 49 |
+| 50000 | HDBSCAN generic (matchRef=true) | - | - | - | - | 9580.93 | 60.08 | 49 |
 
 The table above makes the `mean ± std` reporting explicit for both the cumulative totals and, where applicable, the two internal CoreSG components: build cost and total MST extraction cost.
 

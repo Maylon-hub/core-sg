@@ -423,3 +423,16 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+def selection_sort(arr):
+    n = len(arr)
+    for i in range(n):
+        min_idx = i
+        for j in range(i, n):
+            if arr[j] < arr[min_idx]:
+                min_idx = j
+        temp = arr[min_idx]
+        arr[min_idx] = arr[i]
+        arr[i] = temp
+    return arr

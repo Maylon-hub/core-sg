@@ -499,6 +499,8 @@ def build_report(
     k_min = int(df["k"].min())
     k_max = int(df["k"].max())
     n_k_values = int(df["k"].nunique())
+    sample_sizes = sorted(df["n_samples"].dropna().astype(int).unique())
+    sample_sizes_literal = ", ".join(str(value) for value in sample_sizes)
 
     best_table = best_summary.copy()
     best_table["CoreSG cumulative mean ± std (s)"] = best_table.apply(
@@ -616,7 +618,7 @@ The central hypothesis is that CoreSG pays a higher up-front construction cost, 
 
 The CSV files in [`benchmarking/`](./) cover synthetic datasets with the following settings:
 
-- `n_samples` in `{{1000, 5000, 10000, 20000, 30000, 40000}}`
+- `n_samples` in `{{{sample_sizes_literal}}}`
 - `n_features = {n_features}`
 - `centers = {centers}`
 - `seed = {seed}`
