@@ -13,6 +13,8 @@ class TestCoreSGInitialization:
         assert obj.metric == "euclidean"
         assert obj.p == 2
         assert obj.debug is False
+        assert obj.no_noise is True
+        assert obj.noise_label_strategy == "mst_label_propagation"
         assert obj.hdbscan_kwargs == {}
 
         assert obj.n is None
@@ -28,6 +30,27 @@ class TestCoreSGInitialization:
         assert obj._condensed_tree is None
         assert obj._single_linkage_tree is None
         assert obj._min_spanning_tree is None
+
+    def test_init_accepts_noise_configuration(self, core_sg_module):
+        obj = core_sg_module.CoreSG(
+            no_noise=False,
+            noise_label_strategy="mst_label_propagation",
+        )
+
+        assert obj.no_noise is False
+        assert obj.noise_label_strategy == "mst_label_propagation"
+
+    def test_init_rejects_non_boolean_no_noise(self, core_sg_module):
+        with pytest.raises(TypeError, match="no_noise must be a boolean"):
+            core_sg_module.CoreSG(no_noise="yes")
+
+    def test_init_rejects_non_string_noise_label_strategy(self, core_sg_module):
+        with pytest.raises(TypeError, match="noise_label_strategy must be a string"):
+            core_sg_module.CoreSG(noise_label_strategy=123)
+
+    def test_init_rejects_unknown_noise_label_strategy(self, core_sg_module):
+        with pytest.raises(ValueError, match="Unknown noise_label_strategy"):
+            core_sg_module.CoreSG(noise_label_strategy="unknown_strategy")
 
     def test_get_tree_to_labels_kwargs_filters_supported_non_none_values(
         self, core_sg_module

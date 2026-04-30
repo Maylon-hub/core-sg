@@ -207,6 +207,7 @@ def run_core_sg_variant(
             metric="euclidean",
             p=2,
             debug=False,
+            no_noise=False,
             match_reference_implementation=fit_match_reference_implementation,
         )
 

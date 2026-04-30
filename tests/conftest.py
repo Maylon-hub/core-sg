@@ -110,5 +110,10 @@ def core_sg_module(fake_hdbscan_modules):
 
 
 @pytest.fixture()
+def noise_handler_module(fake_hdbscan_modules):
+    return importlib.import_module("core_sg.noise_handler")
+
+
+@pytest.fixture()
 def sample_X() -> np.ndarray:
     return make_sample_X()

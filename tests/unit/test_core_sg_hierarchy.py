@@ -26,6 +26,18 @@ def fitted_obj(core_sg_module, monkeypatch, sample_X):
 
 
 class TestCoreSGHierarchy:
+    def test_public_methods_raise_before_fit(self, core_sg_module):
+        obj = core_sg_module.CoreSG()
+
+        with pytest.raises(AttributeError, match="CoreSG is not fitted yet"):
+            obj.get_core_distance(2)
+        with pytest.raises(AttributeError, match="CoreSG is not fitted yet"):
+            obj.get_core_sg_mutual_reachability_distance(2)
+        with pytest.raises(AttributeError, match="CoreSG is not fitted yet"):
+            obj.extract_mst_from_core_sg(2)
+        with pytest.raises(AttributeError, match="CoreSG is not fitted yet"):
+            obj.extract_hierarchy_from_core_sg(2)
+
     def test_get_core_distance_returns_requested_column(self, fitted_obj):
         obj, payload = fitted_obj
         expected = payload[2][:, 1]
@@ -134,6 +146,233 @@ class TestCoreSGHierarchy:
         assert np.array_equal(obj._single_linkage_tree, obj._single_linkage_tree_k_max)
         assert np.array_equal(obj._min_spanning_tree, obj._min_spanning_tree_k_max)
 
+    def test_extract_hierarchy_uses_default_c_for_noise_handler(
+        self, core_sg_module, fitted_obj, monkeypatch
+    ):
+        obj, _ = fitted_obj
+        labels = np.array([0, -1, 0, 1, 1, 1], dtype=np.int64)
+
+        monkeypatch.setattr(
+            core_sg_module,
+            "tree_to_labels",
+            lambda instance, single_linkage_tree, min_spanning_tree: (
+                labels.copy(),
+                np.linspace(0.5, 1.0, obj.n),
+                np.array([0.6, 0.8], dtype=np.float64),
+                np.column_stack(
+                    [
+                        np.arange(obj.n),
+                        np.arange(obj.n),
+                        np.ones(obj.n),
+                        np.full(obj.n, 2.0),
+                    ]
+                ).astype(np.float64),
+                single_linkage_tree,
+                min_spanning_tree,
+            ),
+        )
+        monkeypatch.setattr(
+            core_sg_module,
+            "label",
+            lambda mst: np.asarray(mst, dtype=np.float64),
+        )
+
+        seen = {}
+
+        class DummyHandler:
+            def reassign(self, *, labels, min_spanning_tree, n_samples):
+                seen["labels"] = labels.copy()
+                seen["mst"] = np.asarray(min_spanning_tree)
+                seen["n_samples"] = n_samples
+                return np.where(labels == -1, 9, labels)
+
+        def fake_build_noise_handler(strategy, *, c):
+            seen["strategy"] = strategy
+            seen["c"] = c
+            return DummyHandler()
+
+        monkeypatch.setattr(
+            core_sg_module, "build_noise_handler", fake_build_noise_handler
+        )
+
+        obj.extract_hierarchy_from_core_sg(3)
+
+        assert seen["strategy"] == "mst_label_propagation"
+        assert seen["c"] == 5
+        assert seen["n_samples"] == obj.n
+        assert np.array_equal(seen["labels"], labels)
+        assert np.array_equal(obj.labels_, np.array([0, 9, 0, 1, 1, 1]))
+
+    def test_extract_hierarchy_k_max_can_apply_noise_handler(
+        self, core_sg_module, fitted_obj, monkeypatch
+    ):
+        obj, _ = fitted_obj
+        obj.labels_k_max = np.array([0, -1, 0, 1, 1, 1], dtype=np.int64)
+        obj.probabilities_k_max = np.linspace(0.5, 1.0, obj.n)
+        obj.cluster_persistence_k_max = np.array([0.6, 0.8], dtype=np.float64)
+
+        seen = {}
+
+        class DummyHandler:
+            def reassign(self, *, labels, min_spanning_tree, n_samples):
+                seen["labels"] = labels.copy()
+                seen["n_samples"] = n_samples
+                return np.where(labels == -1, 5, labels)
+
+        monkeypatch.setattr(
+            core_sg_module,
+            "build_noise_handler",
+            lambda strategy, *, c: DummyHandler(),
+        )
+
+        obj.extract_hierarchy_from_core_sg(obj.k_max)
+
+        assert seen["n_samples"] == obj.n
+        assert np.array_equal(seen["labels"], np.array([0, -1, 0, 1, 1, 1]))
+        assert np.array_equal(obj.labels_, np.array([0, 5, 0, 1, 1, 1]))
+
+    def test_extract_hierarchy_skips_noise_handler_when_disabled(
+        self, core_sg_module, fitted_obj, monkeypatch
+    ):
+        obj, _ = fitted_obj
+        obj.no_noise = False
+        labels = np.array([0, -1, 0, 1, 1, 1], dtype=np.int64)
+
+        monkeypatch.setattr(
+            core_sg_module,
+            "tree_to_labels",
+            lambda instance, single_linkage_tree, min_spanning_tree: (
+                labels.copy(),
+                np.linspace(0.5, 1.0, obj.n),
+                np.array([0.6, 0.8], dtype=np.float64),
+                np.column_stack(
+                    [
+                        np.arange(obj.n),
+                        np.arange(obj.n),
+                        np.ones(obj.n),
+                        np.full(obj.n, 2.0),
+                    ]
+                ).astype(np.float64),
+                single_linkage_tree,
+                min_spanning_tree,
+            ),
+        )
+        monkeypatch.setattr(
+            core_sg_module,
+            "label",
+            lambda mst: np.asarray(mst, dtype=np.float64),
+        )
+
+        def fail_build_noise_handler(*args, **kwargs):
+            raise AssertionError("noise handler should not be built")
+
+        monkeypatch.setattr(
+            core_sg_module, "build_noise_handler", fail_build_noise_handler
+        )
+
+        obj.extract_hierarchy_from_core_sg(3)
+
+        assert np.array_equal(obj.labels_, labels)
+
+    def test_extract_hierarchy_skips_noise_handler_when_no_noise_labels_exist(
+        self, core_sg_module, fitted_obj, monkeypatch
+    ):
+        obj, _ = fitted_obj
+        labels = np.array([0, 0, 0, 1, 1, 1], dtype=np.int64)
+
+        monkeypatch.setattr(
+            core_sg_module,
+            "tree_to_labels",
+            lambda instance, single_linkage_tree, min_spanning_tree: (
+                labels.copy(),
+                np.linspace(0.5, 1.0, obj.n),
+                np.array([0.6, 0.8], dtype=np.float64),
+                np.column_stack(
+                    [
+                        np.arange(obj.n),
+                        np.arange(obj.n),
+                        np.ones(obj.n),
+                        np.full(obj.n, 2.0),
+                    ]
+                ).astype(np.float64),
+                single_linkage_tree,
+                min_spanning_tree,
+            ),
+        )
+        monkeypatch.setattr(
+            core_sg_module,
+            "label",
+            lambda mst: np.asarray(mst, dtype=np.float64),
+        )
+
+        def fail_build_noise_handler(*args, **kwargs):
+            raise AssertionError("noise handler should not be built")
+
+        monkeypatch.setattr(
+            core_sg_module, "build_noise_handler", fail_build_noise_handler
+        )
+
+        obj.extract_hierarchy_from_core_sg(3)
+
+        assert np.array_equal(obj.labels_, labels)
+
+    def test_extract_hierarchy_noise_handler_only_updates_labels(
+        self, core_sg_module, fitted_obj, monkeypatch
+    ):
+        obj, _ = fitted_obj
+        labels = np.array([0, -1, 0, 1, 1, 1], dtype=np.int64)
+        probabilities = np.linspace(0.5, 1.0, obj.n)
+        persistence = np.array([0.55, 0.88], dtype=np.float64)
+        mst_small = np.array(
+            [
+                [0, 1, 1.0],
+                [1, 2, 1.4],
+                [2, 3, 6.4],
+                [3, 4, 1.0],
+                [4, 5, 1.4],
+            ],
+            dtype=np.float64,
+        )
+        condensed = np.column_stack(
+            [np.arange(obj.n), np.arange(obj.n), np.ones(obj.n), np.full(obj.n, 2.0)]
+        ).astype(np.float64)
+
+        monkeypatch.setattr(
+            core_sg_module, "mst_from_core_sg", lambda **kwargs: mst_small
+        )
+        monkeypatch.setattr(core_sg_module, "label", lambda mst: mst)
+        monkeypatch.setattr(
+            core_sg_module,
+            "tree_to_labels",
+            lambda instance, single_linkage_tree, min_spanning_tree: (
+                labels.copy(),
+                probabilities.copy(),
+                persistence.copy(),
+                condensed.copy(),
+                single_linkage_tree.copy(),
+                min_spanning_tree.copy(),
+            ),
+        )
+
+        class DummyHandler:
+            def reassign(self, *, labels, min_spanning_tree, n_samples):
+                return np.where(labels == -1, 7, labels)
+
+        monkeypatch.setattr(
+            core_sg_module,
+            "build_noise_handler",
+            lambda strategy, *, c: DummyHandler(),
+        )
+
+        obj.extract_hierarchy_from_core_sg(3, c=3)
+
+        assert np.array_equal(obj.labels_, np.array([0, 7, 0, 1, 1, 1]))
+        assert np.array_equal(obj.probabilities_, probabilities)
+        assert np.array_equal(obj.cluster_persistence_, persistence)
+        assert np.array_equal(obj._condensed_tree, condensed)
+        assert np.array_equal(obj._single_linkage_tree, mst_small)
+        assert np.array_equal(obj._min_spanning_tree, mst_small)
+
     def test_extract_mst_from_core_sg_uses_recomputed_path_for_smaller_k(
         self, core_sg_module, fitted_obj, monkeypatch
     ):
@@ -164,10 +403,61 @@ class TestCoreSGHierarchy:
         obj, _ = fitted_obj
 
         with pytest.raises(ValueError, match="k invalid"):
+            obj.get_core_distance(0)
+        with pytest.raises(ValueError, match="k must be >= 2"):
+            obj.get_core_distance(1)
+        with pytest.raises(ValueError, match="k invalid"):
+            obj.get_core_distance(obj.k_max + 1)
+
+        with pytest.raises(ValueError, match="k invalid"):
             obj.get_core_sg_mutual_reachability_distance(0)
 
         with pytest.raises(ValueError, match="k must be >= 2"):
             obj.get_core_sg_mutual_reachability_distance(1)
+
+        with pytest.raises(ValueError, match="k invalid"):
+            obj.extract_mst_from_core_sg(0)
+        with pytest.raises(ValueError, match="k must be >= 2"):
+            obj.extract_mst_from_core_sg(1)
+        with pytest.raises(ValueError, match="k invalid"):
+            obj.extract_mst_from_core_sg(obj.k_max + 1)
+
+        with pytest.raises(ValueError, match="k invalid"):
+            obj.extract_hierarchy_from_core_sg(0)
+        with pytest.raises(ValueError, match="k must be >= 2"):
+            obj.extract_hierarchy_from_core_sg(1)
+        with pytest.raises(ValueError, match="k invalid"):
+            obj.extract_hierarchy_from_core_sg(obj.k_max + 1)
+
+    def test_extract_hierarchy_rejects_invalid_c_values(
+        self, core_sg_module, fitted_obj, monkeypatch
+    ):
+        obj, _ = fitted_obj
+        monkeypatch.setattr(
+            core_sg_module,
+            "tree_to_labels",
+            lambda instance, single_linkage_tree, min_spanning_tree: (
+                np.array([0, 0, 0, 1, 1, 1], dtype=np.int64),
+                np.linspace(0.5, 1.0, obj.n),
+                np.array([0.6, 0.8], dtype=np.float64),
+                np.column_stack(
+                    [
+                        np.arange(obj.n),
+                        np.arange(obj.n),
+                        np.ones(obj.n),
+                        np.full(obj.n, 2.0),
+                    ]
+                ).astype(np.float64),
+                single_linkage_tree,
+                min_spanning_tree,
+            ),
+        )
+        monkeypatch.setattr(core_sg_module, "label", lambda mst: mst)
+
+        with pytest.raises(ValueError, match="greater than or equal to 1"):
+            obj.extract_hierarchy_from_core_sg(3, c=0)
+        with pytest.raises(ValueError, match="greater than or equal to 1"):
+            obj.extract_hierarchy_from_core_sg(3, c=1.5)
 
     def test_minimum_spanning_tree_wrapper_warns_without_raw_data(
         self, core_sg_module, fitted_obj, monkeypatch
