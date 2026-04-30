@@ -77,6 +77,34 @@ probabilities = core.probabilities_
 cluster_persistence = core.cluster_persistence_
 ```
 
+### Reassigning noise labels
+
+If you prefer a full assignment with no final `-1` labels, enable the
+post-processing step with `no_noise=True` (the default). The current strategy,
+`noise_label_strategy="mst_label_propagation"`, updates only `labels_` after
+hierarchy extraction and leaves the remaining hierarchy artifacts unchanged.
+
+```python
+core = CoreSG(
+    metric="euclidean",
+    p=2,
+    no_noise=True,
+    noise_label_strategy="mst_label_propagation",
+)
+
+core.fit(X, k_max=15)
+core.extract_hierarchy_from_core_sg(k=10, c=5)
+labels = core.labels_
+```
+
+This post-processing flow is inspired by the density-connectivity
+label-propagation view discussed in:
+
+- Gertrudes, J. C., Zimek, A., Sander, J., and Campello, R. J. G. B.  
+  *A unified view of density-based methods for semi-supervised clustering and classification*.  
+  Data Mining and Knowledge Discovery, 33, 1894-1952 (2019).  
+  DOI: `10.1007/s10618-019-00651-1`
+
 ### Inspecting tree objects
 
 ```python

@@ -20,6 +20,7 @@ from sklearn.metrics import pairwise_distances
 from .edges import add_mst_edges_to_metric_edges, build_knng_vectors
 from .knn import knn_from_precomputed
 from .mst_kruskal import kruskal_mst
+from .noise_handler import build_noise_handler
 from .reweight import reweight_core_sg_mutual_reachability, sort_core_sg
 
 
@@ -300,6 +301,8 @@ class CoreSG:
         metric: str = "euclidean",
         p: int = 2,
         debug: bool = False,
+        no_noise: bool = True,
+        noise_label_strategy: str = "mst_label_propagation",
         **hdbscan_kwargs: Any,
     ) -> None:
         """
@@ -313,14 +316,33 @@ class CoreSG:
             Power parameter for metrics such as Minkowski.
         debug : bool, default=False
             If True, prints execution times for the main steps.
+        no_noise : bool, default=True
+            If True, points labeled as `-1` after hierarchy extraction are
+            optionally reassigned through a post-processing strategy. This
+            affects only `labels_`.
+        noise_label_strategy : str, default="mst_label_propagation"
+            Name of the post-processing strategy used when `no_noise=True`.
+            The current implementation supports only
+            `"mst_label_propagation"`, inspired by the density-connectivity
+            label propagation view described by Gertrudes et al. (2019),
+            "A unified view of density-based methods for semi-supervised
+            clustering and classification".
         **hdbscan_kwargs : Any
             Extra keyword arguments passed to `build_core_sg_from_data(...)`.
             A filtered subset is also reused in `_tree_to_labels(...)`.
         """
+        if not isinstance(no_noise, bool):
+            raise TypeError("no_noise must be a boolean value.")
+        if not isinstance(noise_label_strategy, str):
+            raise TypeError("noise_label_strategy must be a string.")
+
         self.metric = metric
         self.p = p
         self.debug = debug
+        self.no_noise = no_noise
+        self.noise_label_strategy = noise_label_strategy
         self.hdbscan_kwargs = dict(hdbscan_kwargs)
+        build_noise_handler(self.noise_label_strategy, c=5)
 
         # Global fit metadata
         self.n = None
@@ -350,11 +372,13 @@ class CoreSG:
         self._min_spanning_tree = None
 
     def get_core_sg_mutual_reachability_distance(self, k: int):
+        self._validate_k(k)
         return core_sg_mutual_reachability_distance(
             self._core_sg, self._metric_edges, self._core_k_list, self.n, self.k_max, k
         )
 
     def get_core_distance(self, k):
+        self._validate_k(k)
         core_k = self._core_k_list[:, k - 1]
         core_k = np.ascontiguousarray(core_k, dtype=np.float64)
         return core_k
@@ -390,6 +414,40 @@ class CoreSG:
         self.cluster_persistence_k_max = hdb_obj.cluster_persistence_
         self.single_linkage_tree_k_max_ = hdb_obj._single_linkage_tree
         self.minimum_spanning_tree_k_max_ = hdb_obj._min_spanning_tree
+
+    def _should_apply_noise_handler(self) -> bool:
+        return bool(
+            self.no_noise
+            and self.labels_ is not None
+            and np.any(np.asarray(self.labels_) == -1)
+        )
+
+    def _ensure_fitted(self) -> None:
+        if self.k_max is None or self.n is None:
+            raise AttributeError("CoreSG is not fitted yet. Run fit first.")
+
+    def _validate_k(self, k: int) -> None:
+        self._ensure_fitted()
+        if k <= 0 or k > self.k_max:
+            raise ValueError("k invalid (1 <= k <= k_max).")
+        if k < 2:
+            raise ValueError("k must be >= 2.")
+
+    @staticmethod
+    def _validate_noise_handler_c(c: int) -> None:
+        if not isinstance(c, int) or c < 1:
+            raise ValueError("c must be an integer greater than or equal to 1.")
+
+    def _apply_noise_handler(self, *, c: int) -> None:
+        if not self._should_apply_noise_handler():
+            return
+
+        handler = build_noise_handler(self.noise_label_strategy, c=c)
+        self.labels_ = handler.reassign(
+            labels=self.labels_,
+            min_spanning_tree=self._min_spanning_tree,
+            n_samples=self.n,
+        )
 
     @staticmethod
     def _mst_to_dataframe(mst: np.ndarray) -> pd.DataFrame:
@@ -707,6 +765,7 @@ class CoreSG:
         np.ndarray or pd.DataFrame
             The extracted MST, either as a NumPy array or as a DataFrame.
         """
+        self._validate_k(k)
         if self.k_max == k:
             if toDF:
                 return self._mst_to_dataframe(self._min_spanning_tree_k_max)
@@ -731,7 +790,7 @@ class CoreSG:
 
         return mst_core
 
-    def extract_hierarchy_from_core_sg(self, k: int) -> None:
+    def extract_hierarchy_from_core_sg(self, k: int, c: int = 5) -> None:
         """
         Reconstruct the HDBSCAN hierarchy for a given `k` from the Core-SG.
 
@@ -745,12 +804,19 @@ class CoreSG:
         ----------
         k : int
             Neighborhood size for which the hierarchy should be extracted.
+        c : int, default=5
+            Number of largest edge weights retained in the top-`c` path
+            signature used by the `mst_label_propagation` noise reassignment
+            strategy. This affects only the optional post-processing step and
+            only updates `labels_`.
 
         Returns
         -------
         None
             The method updates the instance attributes in place.
         """
+        self._validate_k(k)
+        self._validate_noise_handler_c(c)
 
         if self.k_max == k:
             (
@@ -765,6 +831,7 @@ class CoreSG:
             self._condensed_tree = condensed_tree
             self._single_linkage_tree = single_linkage_tree
             self._min_spanning_tree = min_spanning_tree
+            self._apply_noise_handler(c=c)
 
             return None
 
@@ -785,6 +852,7 @@ class CoreSG:
         self._condensed_tree = condensed_tree
         self._single_linkage_tree = single_linkage_tree
         self._min_spanning_tree = min_spanning_tree
+        self._apply_noise_handler(c=c)
 
         if self.debug:
             print(f"FOSC K = {k} done in {t1 - t0:.2f}s")
