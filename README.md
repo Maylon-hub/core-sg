@@ -60,6 +60,18 @@ core = CoreSG(metric="euclidean", p=2)
 core.fit(X, k_max=15)
 ```
 
+To enable the approximate anti-hub reinforced variant, set `algorithm="score-sg"`:
+
+```python
+core = CoreSG(
+    metric="euclidean",
+    p=2,
+    algorithm="score-sg",
+    random_state=42,
+)
+core.fit(X, k_max=15)
+```
+
 ### Extracting an MST
 
 ```python
@@ -177,6 +189,7 @@ Dependencies:
 - `pandas>=2.0`
 - `scikit-learn>=1.3`
 - `hdbscan>=0.8.39`
+- `pynndescent>=0.5.13`
 
 The package metadata, runtime dependencies, and optional extras are defined in `pyproject.toml`.
 

@@ -15,6 +15,9 @@ class TestCoreSGInitialization:
         assert obj.debug is False
         assert obj.no_noise is True
         assert obj.noise_label_strategy == "mst_label_propagation"
+        assert obj.algorithm == "core-sg"
+        assert obj.random_state is None
+        assert obj.approx_knn_kwargs is None
         assert obj.hdbscan_kwargs == {}
 
         assert obj.n is None
@@ -23,6 +26,12 @@ class TestCoreSGInitialization:
         assert obj._metric_edges is None
         assert obj._core_k_list is None
         assert obj._D is None
+        assert obj._tree_to_labels_data is None
+        with pytest.raises(
+            AttributeError,
+            match="Attribute 'anti_hubs_' is available only when algorithm='score-sg'",
+        ):
+            _ = obj.anti_hubs_
 
         assert obj.labels_ is None
         assert obj.probabilities_ is None
@@ -51,6 +60,43 @@ class TestCoreSGInitialization:
     def test_init_rejects_unknown_noise_label_strategy(self, core_sg_module):
         with pytest.raises(ValueError, match="Unknown noise_label_strategy"):
             core_sg_module.CoreSG(noise_label_strategy="unknown_strategy")
+
+    def test_init_accepts_algorithm_random_state_and_approx_kwargs(self, core_sg_module):
+        obj = core_sg_module.CoreSG(
+            algorithm="score-sg",
+            random_state=7,
+            approx_knn_kwargs={"n_trees": 4},
+        )
+
+        assert obj.algorithm == "score-sg"
+        assert obj.random_state == 7
+        assert obj.approx_knn_kwargs == {"n_trees": 4}
+
+    def test_init_rejects_invalid_algorithm(self, core_sg_module):
+        with pytest.raises(ValueError, match="algorithm must be one of"):
+            core_sg_module.CoreSG(algorithm="unknown")
+
+    def test_init_rejects_non_dict_approx_knn_kwargs(self, core_sg_module):
+        with pytest.raises(TypeError, match="approx_knn_kwargs must be a dictionary"):
+            core_sg_module.CoreSG(approx_knn_kwargs=["bad"])
+
+    def test_score_sg_blocks_access_to_core_sg_specific_D_attribute(
+        self, core_sg_module
+    ):
+        obj = core_sg_module.CoreSG(algorithm="score-sg")
+
+        with pytest.raises(
+            AttributeError,
+            match="Attribute '_D' is available only when algorithm='core-sg'",
+        ):
+            _ = obj._D
+
+    def test_score_sg_allows_access_to_anti_hubs_attribute_before_fit(
+        self, core_sg_module
+    ):
+        obj = core_sg_module.CoreSG(algorithm="score-sg")
+
+        assert obj.anti_hubs_ is None
 
     def test_get_tree_to_labels_kwargs_filters_supported_non_none_values(
         self, core_sg_module

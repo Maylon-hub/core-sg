@@ -93,7 +93,8 @@ class TestIntegrationSmoke:
     def test_public_package_import_exposes_core_sg_class(self):
         from core_sg import CoreSG as ExportedCoreSG
 
-        assert ExportedCoreSG is CoreSG
+        assert ExportedCoreSG.__name__ == CoreSG.__name__ == "CoreSG"
+        assert ExportedCoreSG.__module__ == CoreSG.__module__ == "core_sg.core_sg"
 
     def test_full_fit_extract_hierarchy_and_wrapped_accessors_with_real_hdbscan(
         self, dataset
@@ -110,3 +111,53 @@ class TestIntegrationSmoke:
         assert core.condensed_tree_.to_pandas().shape[0] >= core.n
         assert core.single_linkage_tree_.to_pandas().shape[0] == core.n - 1
         assert core.minimum_spanning_tree_.to_pandas().shape[0] == core.n - 1
+
+    def test_score_sg_fit_extract_hierarchy_and_wrapped_accessors(self, dataset):
+        connected_dataset, _ = make_blobs(
+            n_samples=60,
+            n_features=3,
+            centers=1,
+            cluster_std=1.0,
+            random_state=42,
+        )
+        core = CoreSG(
+            metric="euclidean",
+            p=2,
+            algorithm="score-sg",
+            random_state=42,
+            debug=False,
+            match_reference_implementation=True,
+        )
+        core.fit(connected_dataset, 6, test_only=True)
+        core.extract_hierarchy_from_core_sg(4)
+
+        with pytest.raises(
+            AttributeError,
+            match="Attribute '_D' is available only when algorithm='core-sg'",
+        ):
+            _ = core._D
+        assert core._tree_to_labels_data.shape == connected_dataset.shape
+        assert core.anti_hubs_ is not None
+        assert core.anti_hubs_.ndim == 1
+        assert core.anti_hubs_.shape[0] == int(np.floor(np.sqrt(connected_dataset.shape[0])))
+        assert core.labels_ is not None
+        assert core.probabilities_ is not None
+        assert core.cluster_persistence_ is not None
+        assert core.condensed_tree_.to_pandas().shape[0] >= core.n
+        assert core.single_linkage_tree_.to_pandas().shape[0] == core.n - 1
+        assert core.minimum_spanning_tree_.to_pandas().shape[0] == core.n - 1
+
+    def test_score_sg_fit_raises_explicitly_when_support_graph_is_disconnected(
+        self, dataset
+    ):
+        core = CoreSG(
+            metric="euclidean",
+            p=2,
+            algorithm="score-sg",
+            random_state=42,
+            debug=False,
+            match_reference_implementation=True,
+        )
+
+        with pytest.raises(ValueError, match="support graph is disconnected"):
+            core.fit(dataset, 6, test_only=True)
