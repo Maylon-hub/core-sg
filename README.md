@@ -38,131 +38,6 @@ In practice, Core-SG helps you:
 - keep an HDBSCAN-like workflow (`labels_`, `probabilities_`, `cluster_persistence_`)
 - inspect tree artifacts (`condensed_tree_`, `single_linkage_tree_`, `minimum_spanning_tree_`)
 
-## How to use Core-SG
-
-Core-SG follows a two-stage workflow:
-
-1. fit once with `k_max`
-2. extract MSTs and hierarchies for smaller `k`
-
-```python
-from sklearn.datasets import make_blobs
-from core_sg import CoreSG
-
-X, _ = make_blobs(
-    n_samples=1000,
-    n_features=10,
-    centers=10,
-    random_state=42,
-)
-
-core = CoreSG(metric="euclidean", p=2)
-core.fit(X, k_max=15)
-```
-
-To enable the approximate anti-hub reinforced variant, set `algorithm="score-sg"`:
-
-```python
-core = CoreSG(
-    metric="euclidean",
-    p=2,
-    algorithm="score-sg",
-    random_state=42,
-)
-core.fit(X, k_max=15)
-```
-
-### Extracting an MST
-
-```python
-mst = core.extract_mst_from_core_sg(k=10)
-mst_df = core.extract_mst_from_core_sg(k=10, toDF=True)
-```
-
-### Extracting hierarchy outputs
-
-```python
-core.extract_hierarchy_from_core_sg(k=10)
-
-labels = core.labels_
-probabilities = core.probabilities_
-cluster_persistence = core.cluster_persistence_
-```
-
-### Reassigning noise labels
-
-If you prefer a full assignment with no final `-1` labels, enable the
-post-processing step with `no_noise=True` (the default). The current strategy,
-`noise_label_strategy="mst_label_propagation"`, updates only `labels_` after
-hierarchy extraction and leaves the remaining hierarchy artifacts unchanged.
-
-```python
-core = CoreSG(
-    metric="euclidean",
-    p=2,
-    no_noise=True,
-    noise_label_strategy="mst_label_propagation",
-)
-
-core.fit(X, k_max=15)
-core.extract_hierarchy_from_core_sg(k=10, c=5)
-labels = core.labels_
-```
-
-This post-processing flow is inspired by the density-connectivity
-label-propagation view discussed in:
-
-- Gertrudes, J. C., Zimek, A., Sander, J., and Campello, R. J. G. B.  
-  *A unified view of density-based methods for semi-supervised clustering and classification*.  
-  Data Mining and Knowledge Discovery, 33, 1894-1952 (2019).  
-  DOI: `10.1007/s10618-019-00651-1`
-
-### Inspecting tree objects
-
-```python
-condensed_tree = core.condensed_tree_
-single_linkage_tree = core.single_linkage_tree_
-minimum_spanning_tree = core.minimum_spanning_tree_
-```
-
-### Accessing fitted artifacts at `k_max`
-
-```python
-fitted = core.get_fitted_hdbscan_objects(wrapped=True)
-```
-
-Returned keys:
-
-- `labels_`
-- `probabilities_`
-- `cluster_persistence_`
-- `condensed_tree_`
-- `single_linkage_tree_`
-- `minimum_spanning_tree_`
-
-Direct cached wrappers at fit-time:
-
-- `condensed_tree_k_max_`
-- `single_linkage_tree_k_max_`
-- `minimum_spanning_tree_k_max_`
-
-## Performance (multi-k workflows)
-
-Core-SG is optimized for repeated `k` analysis, not necessarily for a single one-off run.
-
-In `notebooks/01-HDBSCAN_comparision.ipynb`, for a synthetic setup (`n=5000`, `d=2`, `centers=10`) with repeated evaluations from `k=30` down to `k=10`, cumulative runtime was:
-
-- Core-SG: `9.76 s`
-- HDBSCAN: `32.44 s`
-
-This notebook demonstrates the intended tradeoff: higher upfront cost at `k_max`, lower cumulative cost when reusing across multiple smaller `k` values.
-
-## Known limitations
-
-- Core-SG provides strongest gains in repeated multi-`k` usage
-- for single `k` workflows, plain HDBSCAN may be simpler
-- current hierarchy pipeline still depends on HDBSCAN ecosystem components
-
 ## Installing
 
 Install from PyPI:
@@ -193,11 +68,199 @@ Dependencies:
 
 The package metadata, runtime dependencies, and optional extras are defined in `pyproject.toml`.
 
-## Running tests
+## How to use Core-SG
 
-```bash
-pytest tests -v -ra
+Core-SG is designed around a simple two-stage workflow:
+
+1. fit once with a reference `k_max`
+2. reuse the fitted support graph to extract results for any `k <= k_max`
+
+In practice:
+
+- use `fit(X, k_max=...)` to build the reusable support graph once
+- use `extract_mst_from_core_sg(k=...)` when you want only the MST
+- use `extract_hierarchy_from_core_sg(k=...)` when you want HDBSCAN-style outputs such as `labels_` and tree artifacts
+
+### Quick workflow
+
+The most common usage pattern is:
+
+1. choose a largest neighborhood value `k_max`
+2. fit Core-SG once at that value
+3. extract hierarchy outputs for smaller `k` values that you want to compare
+4. inspect `labels_`, `probabilities_`, persistence values, and tree objects
+
+### Primary example
+
+```python
+from sklearn.datasets import make_blobs
+from core_sg import CoreSG
+
+# Example dataset used only to illustrate the workflow.
+X, _ = make_blobs(
+    n_samples=1000,
+    n_features=10,
+    centers=10,
+    random_state=42,
+)
+
+# Build the reusable Core-SG support once at k_max.
+core = CoreSG(metric="euclidean", p=2)
+core.fit(X, k_max=15)
+
+# Reconstruct hierarchy outputs for a smaller k.
+core.extract_hierarchy_from_core_sg(k=10)
+
+# Read the HDBSCAN-style outputs exposed on the fitted instance.
+labels = core.labels_
+probabilities = core.probabilities_
+cluster_persistence = core.cluster_persistence_
 ```
+
+In this example, `k_max=15` is the largest neighborhood size used during the
+initial fit, while `k=10` is one of the smaller values extracted afterward from
+the same fitted support graph.
+
+### Key parameters
+
+- `k_max`: largest neighborhood size used during `fit(...)`; this is the reference value that defines what smaller `k` values can later be extracted
+- `k`: neighborhood size used during `extract_mst_from_core_sg(...)` or `extract_hierarchy_from_core_sg(...)`; it must satisfy `k <= k_max`
+- `metric`: distance metric used to build the support graph
+- `p`: metric power parameter for distance families such as Minkowski
+- `algorithm`: choose `"core-sg"` for the exact workflow or `"score-sg"` for the approximate anti-hub reinforced variant
+- `no_noise`: when `True`, applies an optional post-processing step so final labels do not remain at `-1`
+- `noise_label_strategy`: selects the post-processing strategy used when `no_noise=True`
+- `c`: controls the top-`c` path signature used by the current noise reassignment strategy during hierarchy extraction
+
+### Using the approximate variant
+
+To enable the approximate anti-hub reinforced variant, set
+`algorithm="score-sg"`:
+
+```python
+core = CoreSG(
+    metric="euclidean",
+    p=2,
+    algorithm="score-sg",
+    random_state=42,
+)
+core.fit(X, k_max=15)
+```
+
+### Extracting only an MST
+
+Use `extract_mst_from_core_sg(...)` when you want the minimum spanning tree for
+a given `k` without reconstructing the full hierarchy:
+
+```python
+# Raw MST as a NumPy array.
+mst = core.extract_mst_from_core_sg(k=10)
+
+# The same MST converted to a pandas DataFrame.
+mst_df = core.extract_mst_from_core_sg(k=10, toDF=True)
+```
+
+### Extracting hierarchy outputs
+
+Use `extract_hierarchy_from_core_sg(...)` when you want clustering outputs and
+tree artifacts similar to HDBSCAN:
+
+```python
+core.extract_hierarchy_from_core_sg(k=10)
+
+labels = core.labels_
+probabilities = core.probabilities_
+cluster_persistence = core.cluster_persistence_
+```
+
+After hierarchy extraction, the current instance also exposes:
+
+- `condensed_tree_`
+- `single_linkage_tree_`
+- `minimum_spanning_tree_`
+
+### Reassigning noise labels
+
+If you prefer a full assignment with no final `-1` labels, keep the
+post-processing step enabled with `no_noise=True` (the default). The current
+strategy, `noise_label_strategy="mst_label_propagation"`, updates only
+`labels_` after hierarchy extraction and leaves the remaining hierarchy
+artifacts unchanged.
+
+```python
+core = CoreSG(
+    metric="euclidean",
+    p=2,
+    no_noise=True,
+    noise_label_strategy="mst_label_propagation",
+)
+
+core.fit(X, k_max=15)
+core.extract_hierarchy_from_core_sg(k=10, c=5)
+labels = core.labels_
+```
+
+This is useful when you want a final label assignment for every point, while
+still preserving the original extracted hierarchy objects.
+
+This post-processing flow is inspired by the density-connectivity
+label-propagation view discussed in:
+
+- Gertrudes, J. C., Zimek, A., Sander, J., and Campello, R. J. G. B.  
+  *A unified view of density-based methods for semi-supervised clustering and classification*.  
+  Data Mining and Knowledge Discovery, 33, 1894-1952 (2019).  
+  DOI: `10.1007/s10618-019-00651-1`
+
+### Inspecting tree objects
+
+If you need direct access to the current extracted hierarchy objects:
+
+```python
+condensed_tree = core.condensed_tree_
+single_linkage_tree = core.single_linkage_tree_
+minimum_spanning_tree = core.minimum_spanning_tree_
+```
+
+### Accessing artifacts stored at `k_max`
+
+Core-SG also keeps the HDBSCAN-style artifacts computed at fit time for the
+reference `k_max`:
+
+```python
+fitted = core.get_fitted_hdbscan_objects(wrapped=True)
+```
+
+Returned keys:
+
+- `labels_`
+- `probabilities_`
+- `cluster_persistence_`
+- `condensed_tree_`
+- `single_linkage_tree_`
+- `minimum_spanning_tree_`
+
+Direct cached wrappers at fit time:
+
+- `condensed_tree_k_max_`
+- `single_linkage_tree_k_max_`
+- `minimum_spanning_tree_k_max_`
+
+## Performance (multi-k workflows)
+
+Core-SG is optimized for repeated `k` analysis, not necessarily for a single one-off run.
+
+In `notebooks/01-HDBSCAN_comparision.ipynb`, for a synthetic setup (`n=5000`, `d=2`, `centers=10`) with repeated evaluations from `k=30` down to `k=10`, cumulative runtime was:
+
+- Core-SG: `9.76 s`
+- HDBSCAN: `32.44 s`
+
+This notebook demonstrates the intended tradeoff: higher upfront cost at `k_max`, lower cumulative cost when reusing across multiple smaller `k` values.
+
+## Known limitations
+
+- Core-SG provides strongest gains in repeated multi-`k` usage
+- for single `k` workflows, plain HDBSCAN may be simpler
+- current hierarchy pipeline still depends on HDBSCAN ecosystem components
 
 ## Python version
 
@@ -210,7 +273,9 @@ Core-SG supports Python `>=3.10`.
 
 ## Contributing
 
-Contributions are welcome. Please follow the contribution workflow in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Contributions are welcome. Please follow the contribution workflow in
+[`CONTRIBUTING.md`](CONTRIBUTING.md), including the local test commands and
+development checks documented there.
 
 ## Acknowledgment
 
@@ -225,7 +290,15 @@ for third-party attribution and the reproduced upstream BSD-3-Clause notice.
 
 ## Citing
 
-If you use Core-SG in scientific or technical work, please cite the Core-SG paper:
+If Core-SG contributes to your research, publication, or technical results,
+please cite the following paper:
+
+Antonio Cavalcante Araujo Neto, Murilo Coelho Naldi, Ricardo J. G. B.
+Campello, and Jorg Sander. *CORE-SG: Efficient Computation of Multiple MSTs
+for Density-Based Methods*. In: 2022 IEEE 38th International Conference on
+Data Engineering (ICDE), pp. 951-964, IEEE, 2022.
+
+BibTeX:
 
 ```bibtex
 @inproceedings{neto2022core_sg,
