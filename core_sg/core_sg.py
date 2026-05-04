@@ -4,7 +4,6 @@ from __future__ import annotations
 # This module interoperates with the BSD-3-Clause licensed `hdbscan` project
 # and imports selected internal APIs for compatibility with HDBSCAN-style
 # hierarchy outputs. See the repository-level THIRD_PARTY_NOTICES.md file.
-
 from time import time
 from typing import Any
 from warnings import warn
@@ -22,6 +21,7 @@ from .knn import knn_from_precomputed
 from .mst_kruskal import kruskal_mst
 from .noise_handler import build_noise_handler
 from .reweight import reweight_core_sg_mutual_reachability, sort_core_sg
+from .score_sg import build_score_sg_from_data, is_graph_connected
 
 
 def hdbscan_reference_mst_original_distance(D: np.ndarray, k_max: int) -> np.ndarray:
@@ -70,7 +70,6 @@ def build_core_sg_from_data(
         raise ValueError("k_max invalid (1 <= k_max <= n-1).")
     if k_max < 2:
         raise ValueError("k_max must be >= 2 to use HDBSCAN.")
-
     # ---- pairwise distances dentro da função ----
     if metric == "minkowski":
         D = pairwise_distances(X, metric=metric, p=p)
@@ -240,8 +239,9 @@ def tree_to_labels(
     Parameters
     ----------
     obj : CoreSG
-        Fitted CoreSG instance containing the pairwise distance matrix (`_D`)
-        and the keyword arguments originally provided at initialization.
+        Fitted CoreSG instance containing the data required by
+        `_tree_to_labels(...)` and the keyword arguments originally provided at
+        initialization.
     single_linkage_tree : np.ndarray
         Single linkage hierarchy built from the minimum spanning tree.
     min_spanning_tree : np.ndarray
@@ -264,7 +264,7 @@ def tree_to_labels(
     tree_kwargs = obj._get_tree_to_labels_kwargs()
 
     return _tree_to_labels(
-        obj._D,
+        obj._tree_to_labels_data,
         single_linkage_tree,
         **tree_kwargs,
     ) + (min_spanning_tree,)
@@ -303,6 +303,9 @@ class CoreSG:
         debug: bool = False,
         no_noise: bool = True,
         noise_label_strategy: str = "mst_label_propagation",
+        algorithm: str = "core-sg",
+        random_state: int | np.random.RandomState | None = None,
+        approx_knn_kwargs: dict[str, Any] | None = None,
         **hdbscan_kwargs: Any,
     ) -> None:
         """
@@ -335,12 +338,21 @@ class CoreSG:
             raise TypeError("no_noise must be a boolean value.")
         if not isinstance(noise_label_strategy, str):
             raise TypeError("noise_label_strategy must be a string.")
+        if algorithm not in {"core-sg", "score-sg"}:
+            raise ValueError("algorithm must be one of {'core-sg', 'score-sg'}.")
+        if approx_knn_kwargs is not None and not isinstance(approx_knn_kwargs, dict):
+            raise TypeError("approx_knn_kwargs must be a dictionary or None.")
 
         self.metric = metric
         self.p = p
         self.debug = debug
         self.no_noise = no_noise
         self.noise_label_strategy = noise_label_strategy
+        self.algorithm = algorithm
+        self.random_state = random_state
+        self.approx_knn_kwargs = (
+            None if approx_knn_kwargs is None else dict(approx_knn_kwargs)
+        )
         self.hdbscan_kwargs = dict(hdbscan_kwargs)
         build_noise_handler(self.noise_label_strategy, c=5)
 
@@ -361,7 +373,9 @@ class CoreSG:
         self._core_sg = None
         self._metric_edges = None
         self._core_k_list = None
-        self._D = None
+        self._dense_distance_matrix = None
+        self._tree_to_labels_data = None
+        self._score_sg_anti_hubs = None
 
         # Current artifacts for an extracted k
         self.labels_ = None
@@ -382,6 +396,36 @@ class CoreSG:
         core_k = self._core_k_list[:, k - 1]
         core_k = np.ascontiguousarray(core_k, dtype=np.float64)
         return core_k
+
+    def _raise_algorithm_specific_attribute_error(
+        self, attribute_name: str, *, algorithm: str
+    ) -> None:
+        raise AttributeError(
+            f"Attribute '{attribute_name}' is available only when "
+            f"algorithm='{algorithm}'. Current algorithm is '{self.algorithm}'."
+        )
+
+    @property
+    def _D(self):
+        if self.algorithm != "core-sg":
+            self._raise_algorithm_specific_attribute_error("_D", algorithm="core-sg")
+        return self._dense_distance_matrix
+
+    @_D.setter
+    def _D(self, value):
+        self._dense_distance_matrix = value
+
+    @property
+    def anti_hubs_(self):
+        if self.algorithm != "score-sg":
+            self._raise_algorithm_specific_attribute_error(
+                "anti_hubs_", algorithm="score-sg"
+            )
+        return self._score_sg_anti_hubs
+
+    @anti_hubs_.setter
+    def anti_hubs_(self, value):
+        self._score_sg_anti_hubs = value
 
     def _get_tree_to_labels_kwargs(self) -> dict[str, Any]:
         """
@@ -414,6 +458,92 @@ class CoreSG:
         self.cluster_persistence_k_max = hdb_obj.cluster_persistence_
         self.single_linkage_tree_k_max_ = hdb_obj._single_linkage_tree
         self.minimum_spanning_tree_k_max_ = hdb_obj._min_spanning_tree
+
+    def _store_k_max_outputs_from_arrays(
+        self,
+        *,
+        labels: np.ndarray,
+        probabilities: np.ndarray,
+        cluster_persistence: np.ndarray,
+        condensed_tree: np.ndarray,
+        single_linkage_tree: np.ndarray,
+        min_spanning_tree: np.ndarray,
+    ) -> None:
+        self.labels_k_max = labels
+        self.probabilities_k_max = probabilities
+        self.cluster_persistence_k_max = cluster_persistence
+        self.condensed_tree_k_max_ = condensed_tree
+        self.single_linkage_tree_k_max_ = single_linkage_tree
+        self.minimum_spanning_tree_k_max_ = min_spanning_tree
+
+    def _build_by_algorithm(
+        self, X: np.ndarray, k_max: int, test_only: bool
+    ) -> tuple[
+        np.ndarray, np.ndarray, np.ndarray, np.ndarray, Any | None, np.ndarray | None
+    ]:
+        if self.algorithm == "core-sg":
+            return build_core_sg_from_data(
+                X,
+                k_max=k_max,
+                metric=self.metric,
+                p=self.p,
+                test_only=test_only,
+            ) + (None,)
+        if self.algorithm == "score-sg":
+            core_sg, metric_edges, core_k_list, tree_to_labels_data, anti_hubs = (
+                build_score_sg_from_data(
+                    X,
+                    k_max=k_max,
+                    metric=self.metric,
+                    p=self.p,
+                    random_state=self.random_state,
+                    approx_knn_kwargs=self.approx_knn_kwargs,
+                    test_only=test_only,
+                )
+            )
+            return (
+                core_sg,
+                metric_edges,
+                core_k_list,
+                tree_to_labels_data,
+                None,
+                anti_hubs,
+            )
+
+        raise ValueError("algorithm must be one of {'core-sg', 'score-sg'}.")
+
+    def _extract_score_sg_k_max_outputs(self) -> None:
+        if not is_graph_connected(self._core_sg, self.n):
+            raise ValueError(
+                "score-sg support graph is disconnected for k_max, so an MST "
+                "cannot be extracted from the constructed support graph."
+            )
+
+        mst_k_max = mst_from_core_sg(
+            core_sg=self._core_sg,
+            metric_edges=self._metric_edges,
+            core_k_list=self._core_k_list,
+            n_nodes=self.n,
+            k=self.k_max,
+            debug=self.debug,
+        )
+        single_linkage_tree = label(mst_k_max)
+        (
+            labels,
+            probabilities,
+            cluster_persistence,
+            condensed_tree,
+            single_linkage_tree,
+            min_spanning_tree,
+        ) = tree_to_labels(self, single_linkage_tree, mst_k_max)
+        self._store_k_max_outputs_from_arrays(
+            labels=labels,
+            probabilities=probabilities,
+            cluster_persistence=cluster_persistence,
+            condensed_tree=condensed_tree,
+            single_linkage_tree=single_linkage_tree,
+            min_spanning_tree=min_spanning_tree,
+        )
 
     def _should_apply_noise_handler(self) -> bool:
         return bool(
@@ -735,17 +865,22 @@ class CoreSG:
             self._core_sg,
             self._metric_edges,
             self._core_k_list,
-            self._D,
+            tree_to_labels_data,
             hdb_obj,
-        ) = build_core_sg_from_data(
-            X, k_max=k_max, metric=self.metric, p=self.p, test_only=test_only
-        )
+            anti_hubs,
+        ) = self._build_by_algorithm(X, k_max, test_only)
+        self._tree_to_labels_data = tree_to_labels_data
+        self._D = tree_to_labels_data if self.algorithm == "core-sg" else None
+        self.anti_hubs_ = anti_hubs
         t1 = time()
 
         if self.debug:
             print(f"Core-SG build done in {t1 - t0:.2f}s")
 
-        self._store_k_max_outputs(hdb_obj)
+        if self.algorithm == "core-sg":
+            self._store_k_max_outputs(hdb_obj)
+        else:
+            self._extract_score_sg_k_max_outputs()
         return self
 
     def extract_mst_from_core_sg(self, k: int, toDF: bool = False):
@@ -772,14 +907,22 @@ class CoreSG:
             return self._min_spanning_tree_k_max
 
         t0 = time()
-        mst_core = mst_from_core_sg(
-            core_sg=self._core_sg,
-            metric_edges=self._metric_edges,
-            core_k_list=self._core_k_list,
-            n_nodes=self.n,
-            k=k,
-            debug=self.debug,
-        )
+        try:
+            mst_core = mst_from_core_sg(
+                core_sg=self._core_sg,
+                metric_edges=self._metric_edges,
+                core_k_list=self._core_k_list,
+                n_nodes=self.n,
+                k=k,
+                debug=self.debug,
+            )
+        except ValueError as exc:
+            if self.algorithm == "score-sg" and "Disconex Graph" in str(exc):
+                raise ValueError(
+                    "score-sg support graph is disconnected, so MST extraction "
+                    "is not possible for this fit."
+                ) from exc
+            raise
         t1 = time()
 
         if self.debug:
