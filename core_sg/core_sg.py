@@ -478,7 +478,9 @@ class CoreSG:
 
     def _build_by_algorithm(
         self, X: np.ndarray, k_max: int, test_only: bool
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, Any | None, np.ndarray | None]:
+    ) -> tuple[
+        np.ndarray, np.ndarray, np.ndarray, np.ndarray, Any | None, np.ndarray | None
+    ]:
         if self.algorithm == "core-sg":
             return build_core_sg_from_data(
                 X,
@@ -499,7 +501,14 @@ class CoreSG:
                     test_only=test_only,
                 )
             )
-            return core_sg, metric_edges, core_k_list, tree_to_labels_data, None, anti_hubs
+            return (
+                core_sg,
+                metric_edges,
+                core_k_list,
+                tree_to_labels_data,
+                None,
+                anti_hubs,
+            )
 
         raise ValueError("algorithm must be one of {'core-sg', 'score-sg'}.")
 

@@ -137,7 +137,9 @@ class TestScoreSGBuild:
                 self.query_called = True
                 raise AssertionError("query should not be used for score-sg")
 
-        monkeypatch.setattr(score_sg_module, "_get_pynndescent_class", lambda: FakeNNDescent)
+        monkeypatch.setattr(
+            score_sg_module, "_get_pynndescent_class", lambda: FakeNNDescent
+        )
 
         indices, distances = score_sg_module.build_approximate_knn_graph(
             make_sample_X()[:3],
@@ -148,7 +150,9 @@ class TestScoreSGBuild:
             approx_knn_kwargs=None,
         )
 
-        assert np.array_equal(indices, np.array([[2, 1], [0, 2], [0, 1]], dtype=np.int64))
+        assert np.array_equal(
+            indices, np.array([[2, 1], [0, 2], [0, 1]], dtype=np.int64)
+        )
         assert np.array_equal(
             distances,
             np.array([[0.3, 0.6], [0.2, 0.5], [0.4, 0.7]], dtype=np.float64),
@@ -228,10 +232,14 @@ class TestScoreSGBuild:
     ):
         monkeypatch.setattr(score_sg_module, "NNDescent", None)
         monkeypatch.setattr(
-            score_sg_module, "_PYNNDESCENT_IMPORT_ERROR", ImportError("missing pynndescent")
+            score_sg_module,
+            "_PYNNDESCENT_IMPORT_ERROR",
+            ImportError("missing pynndescent"),
         )
 
-        with pytest.raises(ImportError, match="score-sg requires the 'pynndescent' dependency"):
+        with pytest.raises(
+            ImportError, match="score-sg requires the 'pynndescent' dependency"
+        ):
             score_sg_module.build_approximate_knn_graph(
                 make_sample_X(),
                 2,
@@ -240,6 +248,4 @@ class TestScoreSGBuild:
                 random_state=0,
                 approx_knn_kwargs=None,
             )
-        assert "missing pynndescent" in str(
-            score_sg_module._PYNNDESCENT_IMPORT_ERROR
-        )
+        assert "missing pynndescent" in str(score_sg_module._PYNNDESCENT_IMPORT_ERROR)

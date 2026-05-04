@@ -61,7 +61,9 @@ class TestCoreSGInitialization:
         with pytest.raises(ValueError, match="Unknown noise_label_strategy"):
             core_sg_module.CoreSG(noise_label_strategy="unknown_strategy")
 
-    def test_init_accepts_algorithm_random_state_and_approx_kwargs(self, core_sg_module):
+    def test_init_accepts_algorithm_random_state_and_approx_kwargs(
+        self, core_sg_module
+    ):
         obj = core_sg_module.CoreSG(
             algorithm="score-sg",
             random_state=7,

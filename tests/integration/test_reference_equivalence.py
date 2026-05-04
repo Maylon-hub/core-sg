@@ -139,7 +139,9 @@ class TestIntegrationSmoke:
         assert core._tree_to_labels_data.shape == connected_dataset.shape
         assert core.anti_hubs_ is not None
         assert core.anti_hubs_.ndim == 1
-        assert core.anti_hubs_.shape[0] == int(np.floor(np.sqrt(connected_dataset.shape[0])))
+        assert core.anti_hubs_.shape[0] == int(
+            np.floor(np.sqrt(connected_dataset.shape[0]))
+        )
         assert core.labels_ is not None
         assert core.probabilities_ is not None
         assert core.cluster_persistence_ is not None
