@@ -262,7 +262,7 @@ Important note:
 
 This is why the class stores:
 
-- `self._tree_to_labels_data`
+- `self._tree_to_labels_data_`
 
 instead of assuming `_D` always exists.
 
@@ -270,8 +270,8 @@ instead of assuming `_D` always exists.
 
 The class now stores two related but different concepts:
 
-- `self._D`
-- `self._tree_to_labels_data`
+- `self.distance_matrix_`
+- `self._tree_to_labels_data_`
 
 Behavior:
 

@@ -117,13 +117,13 @@ def warm_up_score_sg(X, *, requested_k_max: int) -> None:
     score = CoreSG(
         metric="euclidean",
         p=2,
-        debug=False,
+        verbose=0,
         no_noise=False,
         algorithm="score-sg",
         random_state=42,
         match_reference_implementation=True,
     )
-    score.fit(warmup_X, k_max=warmup_k_max, test_only=True)
+    score.fit(warmup_X, k_max=warmup_k_max)
     LOGGER.info("Finished Score-SG warm-up")
 
 
@@ -232,7 +232,7 @@ def run_score_sg_variant(
         score = CoreSG(
             metric="euclidean",
             p=2,
-            debug=False,
+            verbose=0,
             no_noise=False,
             algorithm="score-sg",
             random_state=42,
@@ -240,7 +240,7 @@ def run_score_sg_variant(
         )
 
         fit_start = perf_counter()
-        score.fit(X, k_max=k_max, test_only=True)
+        score.fit(X, k_max=k_max)
         fit_elapsed = perf_counter() - fit_start
         fit_samples.append(fit_elapsed)
         LOGGER.info(

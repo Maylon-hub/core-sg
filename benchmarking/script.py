@@ -206,13 +206,13 @@ def run_core_sg_variant(
         core = CoreSG(
             metric="euclidean",
             p=2,
-            debug=False,
+            verbose=0,
             no_noise=False,
             match_reference_implementation=fit_match_reference_implementation,
         )
 
         fit_start = perf_counter()
-        core.fit(X, k_max=k_max, test_only=True)
+        core.fit(X, k_max=k_max)
         fit_elapsed = perf_counter() - fit_start
         fit_samples.append(fit_elapsed)
         LOGGER.info(
