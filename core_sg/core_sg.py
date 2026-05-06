@@ -1,44 +1,27 @@
 from __future__ import annotations
 
-# Third-party attribution:
-# This module interoperates with the BSD-3-Clause licensed `hdbscan` project
-# and imports selected internal APIs for compatibility with HDBSCAN-style
-# hierarchy outputs. See the repository-level THIRD_PARTY_NOTICES.md file.
 from time import time
 from typing import Any
 from warnings import warn
 
-import hdbscan
 import numpy as np
 import pandas as pd
-from hdbscan._hdbscan_linkage import label
-from hdbscan.hdbscan_ import _tree_to_labels
-from hdbscan.plots import CondensedTree, MinimumSpanningTree, SingleLinkageTree
 from sklearn.metrics import pairwise_distances
 
 from .edges import add_mst_edges_to_metric_edges, build_knng_vectors
+from .hdbscan_adapter import (
+    mst_to_single_linkage_tree,
+    reference_mst_original_distance,
+    tree_to_labels as hdbscan_tree_to_labels,
+    wrap_condensed_tree,
+    wrap_minimum_spanning_tree,
+    wrap_single_linkage_tree,
+)
 from .knn import knn_from_precomputed
 from .mst_kruskal import kruskal_mst
 from .noise_handler import build_noise_handler
 from .reweight import reweight_core_sg_mutual_reachability, sort_core_sg
 from .score_sg import build_score_sg_from_data, is_graph_connected
-
-
-def hdbscan_reference_mst_original_distance(D: np.ndarray, k_max: int) -> np.ndarray:
-    # min_samples=1 => mutual reachability == distância original
-    clusterer = hdbscan.HDBSCAN(
-        min_cluster_size=k_max,  # qualquer >=2 (não importa, você só quer a MST)
-        min_samples=k_max,
-        metric="precomputed",
-        algorithm="generic",
-        approx_min_span_tree=False,
-        gen_min_span_tree=True,
-        match_reference_implementation=True,
-    )
-    clusterer.fit(D)
-    return clusterer, np.asarray(
-        clusterer._min_spanning_tree, dtype=np.float64
-    )  # pesos ~ D[u,v]
 
 
 def build_core_sg_from_data(
@@ -116,7 +99,7 @@ def build_core_sg_from_data(
     core_k_list = np.sort(core_k_list, axis=1)
 
     # MST da mutual reachability com k_max
-    hdb_obj, mst_orig = hdbscan_reference_mst_original_distance(D, k_max)
+    hdb_obj, mst_orig = reference_mst_original_distance(D, k_max=k_max)
 
     u = mst_orig[:, 0].astype(np.int64, copy=False)
     v = mst_orig[:, 1].astype(np.int64, copy=False)
@@ -263,11 +246,12 @@ def tree_to_labels(
 
     tree_kwargs = obj._get_tree_to_labels_kwargs()
 
-    return _tree_to_labels(
+    return hdbscan_tree_to_labels(
         obj._tree_to_labels_data,
         single_linkage_tree,
-        **tree_kwargs,
-    ) + (min_spanning_tree,)
+        tree_kwargs=tree_kwargs,
+        min_spanning_tree=min_spanning_tree,
+    )
 
 
 class CoreSG:
@@ -282,8 +266,8 @@ class CoreSG:
     -----
     - All `hdbscan_kwargs` are forwarded to `build_core_sg_from_data(...)`.
     - Only a filtered subset of these arguments is forwarded to
-      `hdbscan.hdbscan_._tree_to_labels(...)`.
-    - This implementation depends on private functions from `hdbscan`.
+      the internal HDBSCAN adapter used for tree-to-label conversion.
+    - HDBSCAN-specific integration is centralized in `hdbscan_adapter`.
     """
 
     _TREE_TO_LABELS_KEYS = {
@@ -527,7 +511,7 @@ class CoreSG:
             k=self.k_max,
             debug=self.debug,
         )
-        single_linkage_tree = label(mst_k_max)
+        single_linkage_tree = mst_to_single_linkage_tree(mst_k_max)
         (
             labels,
             probabilities,
@@ -622,7 +606,7 @@ class CoreSG:
         """
 
         if self._condensed_tree is not None:
-            return CondensedTree(self._condensed_tree, self.labels_)
+            return wrap_condensed_tree(self._condensed_tree, self.labels_)
 
         raise AttributeError(
             "No condensed tree was generated for the current k; "
@@ -650,7 +634,7 @@ class CoreSG:
         """
 
         if self._condensed_tree_k_max is not None:
-            return CondensedTree(self._condensed_tree_k_max, self.labels_k_max)
+            return wrap_condensed_tree(self._condensed_tree_k_max, self.labels_k_max)
 
         raise AttributeError(
             "No condensed tree was saved from fit; try running fit first."
@@ -677,7 +661,7 @@ class CoreSG:
         """
 
         if self._single_linkage_tree is not None:
-            return SingleLinkageTree(self._single_linkage_tree)
+            return wrap_single_linkage_tree(self._single_linkage_tree)
 
         raise AttributeError(
             "No single linkage tree was generated for the current k; "
@@ -708,7 +692,7 @@ class CoreSG:
         """
 
         if self._single_linkage_tree_k_max is not None:
-            return SingleLinkageTree(self._single_linkage_tree_k_max)
+            return wrap_single_linkage_tree(self._single_linkage_tree_k_max)
 
         raise AttributeError(
             "No single linkage tree was saved from fit; try running fit first."
@@ -742,7 +726,7 @@ class CoreSG:
             )
 
         if self._raw_data is not None:
-            return MinimumSpanningTree(self._min_spanning_tree, self._raw_data)
+            return wrap_minimum_spanning_tree(self._min_spanning_tree, self._raw_data)
 
         warn(
             "No raw data is available; this may be due to using a "
@@ -778,7 +762,9 @@ class CoreSG:
             )
 
         if self._raw_data is not None:
-            return MinimumSpanningTree(self._min_spanning_tree_k_max, self._raw_data)
+            return wrap_minimum_spanning_tree(
+                self._min_spanning_tree_k_max, self._raw_data
+            )
 
         warn(
             "No raw data is available; this may be due to using a "
@@ -979,7 +965,7 @@ class CoreSG:
             return None
 
         min_spanning_tree = self.extract_mst_from_core_sg(k)
-        single_linkage_tree = label(min_spanning_tree)
+        single_linkage_tree = mst_to_single_linkage_tree(min_spanning_tree)
 
         t0 = time()
         (

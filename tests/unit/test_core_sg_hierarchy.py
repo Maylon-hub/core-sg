@@ -98,7 +98,9 @@ class TestCoreSGHierarchy:
         monkeypatch.setattr(
             core_sg_module, "mst_from_core_sg", lambda **kwargs: mst_small
         )
-        monkeypatch.setattr(core_sg_module, "label", lambda mst: slt_small)
+        monkeypatch.setattr(
+            core_sg_module, "mst_to_single_linkage_tree", lambda mst: slt_small
+        )
 
         seen = {}
 
@@ -173,7 +175,7 @@ class TestCoreSGHierarchy:
         )
         monkeypatch.setattr(
             core_sg_module,
-            "label",
+            "mst_to_single_linkage_tree",
             lambda mst: np.asarray(mst, dtype=np.float64),
         )
 
@@ -259,7 +261,7 @@ class TestCoreSGHierarchy:
         )
         monkeypatch.setattr(
             core_sg_module,
-            "label",
+            "mst_to_single_linkage_tree",
             lambda mst: np.asarray(mst, dtype=np.float64),
         )
 
@@ -301,7 +303,7 @@ class TestCoreSGHierarchy:
         )
         monkeypatch.setattr(
             core_sg_module,
-            "label",
+            "mst_to_single_linkage_tree",
             lambda mst: np.asarray(mst, dtype=np.float64),
         )
 
@@ -340,7 +342,9 @@ class TestCoreSGHierarchy:
         monkeypatch.setattr(
             core_sg_module, "mst_from_core_sg", lambda **kwargs: mst_small
         )
-        monkeypatch.setattr(core_sg_module, "label", lambda mst: mst)
+        monkeypatch.setattr(
+            core_sg_module, "mst_to_single_linkage_tree", lambda mst: mst
+        )
         monkeypatch.setattr(
             core_sg_module,
             "tree_to_labels",
@@ -452,7 +456,9 @@ class TestCoreSGHierarchy:
                 min_spanning_tree,
             ),
         )
-        monkeypatch.setattr(core_sg_module, "label", lambda mst: mst)
+        monkeypatch.setattr(
+            core_sg_module, "mst_to_single_linkage_tree", lambda mst: mst
+        )
 
         with pytest.raises(ValueError, match="greater than or equal to 1"):
             obj.extract_hierarchy_from_core_sg(3, c=0)
@@ -471,7 +477,9 @@ class TestCoreSGHierarchy:
         monkeypatch.setattr(
             core_sg_module, "mst_from_core_sg", lambda **kwargs: mst_small
         )
-        monkeypatch.setattr(core_sg_module, "label", lambda mst: mst)
+        monkeypatch.setattr(
+            core_sg_module, "mst_to_single_linkage_tree", lambda mst: mst
+        )
         monkeypatch.setattr(
             core_sg_module,
             "tree_to_labels",
