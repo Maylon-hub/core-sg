@@ -258,10 +258,7 @@ def build_score_sg_from_data(
     p: int = 2,
     random_state: int | np.random.RandomState | None = None,
     approx_knn_kwargs: dict[str, Any] | None = None,
-    test_only: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    del test_only
-
     neighbor_indices, neighbor_distances = build_approximate_knn_graph(
         X,
         k_max,

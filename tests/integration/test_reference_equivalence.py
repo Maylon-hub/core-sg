@@ -40,12 +40,12 @@ class TestReferenceEquivalence:
     @pytest.mark.parametrize("k", [6, 4, 2])
     def test_reference_mst_edges_are_contained_in_core_sg(self, dataset, k):
         core = CoreSG(
-            metric="euclidean", p=2, debug=False, match_reference_implementation=True
+            metric="euclidean", p=2, verbose=0, match_reference_implementation=True
         )
-        core.fit(dataset, 6, test_only=True)
+        core._fit_for_tests(dataset, 6)
 
-        mst_hdb = _reference_mst(core._D, k)
-        summary = validate_reference_edges_in_core(core._core_sg, mst_hdb)
+        mst_hdb = _reference_mst(core.distance_matrix_, k)
+        summary = validate_reference_edges_in_core(core.support_graph_, mst_hdb)
 
         assert summary.ok, (
             f"Missing {summary.missing} reference edges out of {summary.compared}."
@@ -54,11 +54,11 @@ class TestReferenceEquivalence:
     @pytest.mark.parametrize("k", [6, 4, 2])
     def test_reference_mrd_weights_are_present_in_reweighted_core_sg(self, dataset, k):
         core = CoreSG(
-            metric="euclidean", p=2, debug=False, match_reference_implementation=True
+            metric="euclidean", p=2, verbose=0, match_reference_implementation=True
         )
-        core.fit(dataset, 6, test_only=True)
+        core._fit_for_tests(dataset, 6)
 
-        mst_hdb = _reference_mst(core._D, k)
+        mst_hdb = _reference_mst(core.distance_matrix_, k)
         weighted_core = core.get_core_sg_mutual_reachability_distance(k)
         summary = validate_reference_weights_in_core(weighted_core, mst_hdb)
 
@@ -72,11 +72,11 @@ class TestReferenceEquivalence:
         self, dataset, k, capsys
     ):
         core = CoreSG(
-            metric="euclidean", p=2, debug=False, match_reference_implementation=True
+            metric="euclidean", p=2, verbose=0, match_reference_implementation=True
         )
-        core.fit(dataset, 6, test_only=True)
+        core._fit_for_tests(dataset, 6)
 
-        mst_hdb = _reference_mst(core._D, k)
+        mst_hdb = _reference_mst(core.distance_matrix_, k)
         mst_core = core.extract_mst_from_core_sg(k)
 
         same_weighted_edges = normalize_undirected_edges(
@@ -100,17 +100,17 @@ class TestIntegrationSmoke:
         self, dataset
     ):
         core = CoreSG(
-            metric="euclidean", p=2, debug=False, match_reference_implementation=True
+            metric="euclidean", p=2, verbose=0, match_reference_implementation=True
         )
-        core.fit(dataset, 6, test_only=True)
+        core._fit_for_tests(dataset, 6)
         core.extract_hierarchy_from_core_sg(4)
 
         assert core.labels_ is not None
         assert core.probabilities_ is not None
         assert core.cluster_persistence_ is not None
-        assert core.condensed_tree_.to_pandas().shape[0] >= core.n
-        assert core.single_linkage_tree_.to_pandas().shape[0] == core.n - 1
-        assert core.minimum_spanning_tree_.to_pandas().shape[0] == core.n - 1
+        assert core.condensed_tree_.to_pandas().shape[0] >= core.n_samples_
+        assert core.single_linkage_tree_.to_pandas().shape[0] == core.n_samples_ - 1
+        assert core.minimum_spanning_tree_.to_pandas().shape[0] == core.n_samples_ - 1
 
     def test_score_sg_fit_extract_hierarchy_and_wrapped_accessors(self, dataset):
         connected_dataset, _ = make_blobs(
@@ -125,18 +125,18 @@ class TestIntegrationSmoke:
             p=2,
             algorithm="score-sg",
             random_state=42,
-            debug=False,
+            verbose=0,
             match_reference_implementation=True,
         )
-        core.fit(connected_dataset, 6, test_only=True)
+        core._fit_for_tests(connected_dataset, 6)
         core.extract_hierarchy_from_core_sg(4)
 
         with pytest.raises(
             AttributeError,
-            match="Attribute '_D' is available only when algorithm='core-sg'",
+            match="Attribute 'distance_matrix_' is available only when algorithm='core-sg'",
         ):
-            _ = core._D
-        assert core._tree_to_labels_data.shape == connected_dataset.shape
+            _ = core.distance_matrix_
+        assert core._tree_to_labels_data_.shape == connected_dataset.shape
         assert core.anti_hubs_ is not None
         assert core.anti_hubs_.ndim == 1
         assert core.anti_hubs_.shape[0] == int(
@@ -145,9 +145,9 @@ class TestIntegrationSmoke:
         assert core.labels_ is not None
         assert core.probabilities_ is not None
         assert core.cluster_persistence_ is not None
-        assert core.condensed_tree_.to_pandas().shape[0] >= core.n
-        assert core.single_linkage_tree_.to_pandas().shape[0] == core.n - 1
-        assert core.minimum_spanning_tree_.to_pandas().shape[0] == core.n - 1
+        assert core.condensed_tree_.to_pandas().shape[0] >= core.n_samples_
+        assert core.single_linkage_tree_.to_pandas().shape[0] == core.n_samples_ - 1
+        assert core.minimum_spanning_tree_.to_pandas().shape[0] == core.n_samples_ - 1
 
     def test_score_sg_fit_raises_explicitly_when_support_graph_is_disconnected(
         self, dataset
@@ -157,9 +157,9 @@ class TestIntegrationSmoke:
             p=2,
             algorithm="score-sg",
             random_state=42,
-            debug=False,
+            verbose=0,
             match_reference_implementation=True,
         )
 
         with pytest.raises(ValueError, match="support graph is disconnected"):
-            core.fit(dataset, 6, test_only=True)
+            core._fit_for_tests(dataset, 6)

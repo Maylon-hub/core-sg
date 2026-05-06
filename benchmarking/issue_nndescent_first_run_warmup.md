@@ -8,7 +8,7 @@ This behavior still appears even when the call happens inside the repetition loo
 
 ## Observed behavior
 
-- The first repetition of `score.fit(X, k_max=k_max, test_only=True)` tends to be slower.
+- The first repetition of `score.fit(X, k_max=k_max)` tends to be slower.
 - Later repetitions are more stable and usually faster.
 - The effect was observed specifically in the `PyNNDescent` path, through `NNDescent`, inside `core_sg/score_sg.py`.
 
@@ -24,7 +24,7 @@ In the benchmark, this is triggered by:
 
 - `benchmarking/score_sg_script.py`
 - `run_score_sg_variant(...)`
-- the `score.fit(X, k_max=k_max, test_only=True)` call inside the repetition loop
+- the `score.fit(X, k_max=k_max)` call inside the repetition loop
 
 ## Initial hypotheses
 

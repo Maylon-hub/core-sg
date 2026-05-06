@@ -12,9 +12,9 @@ pytestmark = [pytest.mark.validation, pytest.mark.slow]
 def fitted_class_core_sg(validation_dataset):
     X = validation_dataset["X"]
     core_sg = CoreSG(
-        metric="euclidean", p=2, debug=True, match_reference_implementation=True
+        metric="euclidean", p=2, verbose=1, match_reference_implementation=True
     )
-    core_sg.fit(X, 30, test_only=True)
+    core_sg._fit_for_tests(X, 30)
     return core_sg
 
 
@@ -25,9 +25,9 @@ class TestClassContainsReferenceMST:
         n = validation_dataset["n"]
 
         for k_iter in range(30, 2, -2):
-            mst_hdb = reference_mst_builder(fitted_class_core_sg._D, k_iter)
+            mst_hdb = reference_mst_builder(fitted_class_core_sg.distance_matrix_, k_iter)
             result = validate_mst_in_core_sg(
-                fitted_class_core_sg._core_sg, mst_hdb, n, k_iter
+                fitted_class_core_sg.support_graph_, mst_hdb, n, k_iter
             )
 
             if not result.ok:

@@ -12,12 +12,12 @@ pytestmark = pytest.mark.unit
 def patched_fit_dependencies(core_sg_module, monkeypatch):
     payload = make_fit_payload()
 
-    def fake_build_core_sg_from_data(X, k_max, metric, p, test_only=False):
+    def fake_build_core_sg_from_data(X, k_max, metric, p, _round_distances=False):
         assert X.shape[0] == payload[3].shape[0]
         assert k_max == 4
         assert metric == "euclidean"
         assert p == 2
-        assert test_only is True
+        assert _round_distances is True
         return payload
 
     monkeypatch.setattr(
@@ -30,51 +30,71 @@ class TestCoreSGFit:
     def test_fit_returns_self_and_stores_artifacts(
         self, core_sg_module, patched_fit_dependencies, sample_X
     ):
-        obj = core_sg_module.CoreSG(metric="euclidean", p=2, debug=False)
+        obj = core_sg_module.CoreSG(metric="euclidean", p=2, verbose=0)
 
-        returned = obj.fit(sample_X, 4, test_only=True)
+        returned = obj._fit_for_tests(sample_X, 4)
         core_sg, metric_edges, core_k_list, D, hdb_obj = patched_fit_dependencies
 
         assert returned is obj
-        assert obj.n == sample_X.shape[0]
-        assert obj.k_max == 4
-        assert obj._raw_data is sample_X
-        assert np.array_equal(obj._core_sg, core_sg)
-        assert np.array_equal(obj._metric_edges, metric_edges)
-        assert np.array_equal(obj._core_k_list, core_k_list)
-        assert np.array_equal(obj._D, D)
-        assert np.array_equal(obj._tree_to_labels_data, D)
+        assert obj.n_samples_ == sample_X.shape[0]
+        assert obj.k_max_ == 4
+        assert obj._raw_data_ is sample_X
+        assert np.array_equal(obj.support_graph_, core_sg)
+        assert np.array_equal(obj.metric_edges_, metric_edges)
+        assert np.array_equal(obj.core_distances_, core_k_list)
+        assert np.array_equal(obj.distance_matrix_, D)
+        assert np.array_equal(obj._tree_to_labels_data_, D)
         with pytest.raises(
             AttributeError,
             match="Attribute 'anti_hubs_' is available only when algorithm='score-sg'",
         ):
             _ = obj.anti_hubs_
 
-        assert np.array_equal(obj.labels_k_max, hdb_obj.labels_)
-        assert np.array_equal(obj.probabilities_k_max, hdb_obj.probabilities_)
+        assert np.array_equal(obj.labels_k_max_, hdb_obj.labels_)
+        assert np.array_equal(obj.probabilities_k_max_, hdb_obj.probabilities_)
         assert np.array_equal(
-            obj.cluster_persistence_k_max, hdb_obj.cluster_persistence_
+            obj.cluster_persistence_k_max_, hdb_obj.cluster_persistence_
         )
         assert np.array_equal(
-            obj._single_linkage_tree_k_max, hdb_obj._single_linkage_tree
+            obj._single_linkage_tree_k_max_array_, hdb_obj._single_linkage_tree
         )
-        assert np.array_equal(obj._min_spanning_tree_k_max, hdb_obj._min_spanning_tree)
+        assert np.array_equal(obj._min_spanning_tree_k_max_array_, hdb_obj._min_spanning_tree)
+
+    def test_fit_reports_progress_through_callback(
+        self, core_sg_module, patched_fit_dependencies, sample_X
+    ):
+        events = []
+        obj = core_sg_module.CoreSG(
+            metric="euclidean",
+            p=2,
+            progress_callback=lambda event, elapsed, info: events.append(
+                (event, elapsed, info)
+            ),
+        )
+
+        obj._fit_for_tests(sample_X, 4)
+
+        assert len(events) == 1
+        event, elapsed, info = events[0]
+        assert event == "build"
+        assert elapsed >= 0.0
+        assert info == {"k_max": 4, "algorithm": "core-sg"}
 
     def test_extract_mst_from_core_sg_returns_cached_mst_for_k_max(
         self, core_sg_module, patched_fit_dependencies, sample_X
     ):
         obj = core_sg_module.CoreSG()
-        obj.fit(sample_X, 4, test_only=True)
+        obj._fit_for_tests(sample_X, 4)
 
         result = obj.extract_mst_from_core_sg(4)
 
-        assert np.array_equal(result, obj._min_spanning_tree_k_max)
+        assert np.array_equal(result, obj._min_spanning_tree_k_max_array_)
 
     def test_extract_mst_from_core_sg_to_dataframe_has_expected_schema(
         self, core_sg_module, patched_fit_dependencies, sample_X
     ):
         obj = core_sg_module.CoreSG()
-        obj.fit(sample_X, 4, test_only=True)
+        obj._fit_for_tests(sample_X, 4)
 
         df = obj.extract_mst_from_core_sg(4, toDF=True)
 
@@ -87,7 +107,7 @@ class TestCoreSGFit:
         self, core_sg_module, patched_fit_dependencies, sample_X
     ):
         obj = core_sg_module.CoreSG()
-        obj.fit(sample_X, 4, test_only=True)
+        obj._fit_for_tests(sample_X, 4)
 
         fitted = obj.get_fitted_hdbscan_objects(wrapped=False)
 
@@ -99,29 +119,29 @@ class TestCoreSGFit:
             "single_linkage_tree_",
             "minimum_spanning_tree_",
         }
-        assert np.array_equal(fitted["labels_"], obj.labels_k_max)
+        assert np.array_equal(fitted["labels_"], obj.labels_k_max_)
         assert np.array_equal(
-            fitted["minimum_spanning_tree_"], obj._min_spanning_tree_k_max
+            fitted["minimum_spanning_tree_"], obj._min_spanning_tree_k_max_array_
         )
 
     def test_get_fitted_hdbscan_objects_wrapped_returns_hdbscan_like_wrappers(
         self, core_sg_module, patched_fit_dependencies, sample_X
     ):
         obj = core_sg_module.CoreSG()
-        obj.fit(sample_X, 4, test_only=True)
+        obj._fit_for_tests(sample_X, 4)
 
         fitted = obj.get_fitted_hdbscan_objects(wrapped=True)
 
-        assert fitted["condensed_tree_"].to_pandas().shape[0] >= obj.n
-        assert fitted["single_linkage_tree_"].to_pandas().shape[0] == obj.n - 1
-        assert fitted["minimum_spanning_tree_"].to_pandas().shape[0] == obj.n - 1
+        assert fitted["condensed_tree_"].to_pandas().shape[0] >= obj.n_samples_
+        assert fitted["single_linkage_tree_"].to_pandas().shape[0] == obj.n_samples_ - 1
+        assert fitted["minimum_spanning_tree_"].to_pandas().shape[0] == obj.n_samples_ - 1
 
     def test_minimum_spanning_tree_fit_wrapper_warns_without_raw_data(
         self, core_sg_module, patched_fit_dependencies, sample_X
     ):
         obj = core_sg_module.CoreSG()
-        obj.fit(sample_X, 4, test_only=True)
-        obj._raw_data = None
+        obj._fit_for_tests(sample_X, 4)
+        obj._raw_data_ = None
 
         with pytest.warns(UserWarning, match="No raw data is available"):
             wrapped = obj.minimum_spanning_tree_k_max_
@@ -141,7 +161,7 @@ class TestCoreSGFit:
             p,
             random_state=None,
             approx_knn_kwargs=None,
-            test_only=False,
+            _round_distances=False,
         ):
             seen["shape"] = X.shape
             seen["k_max"] = k_max
@@ -149,7 +169,7 @@ class TestCoreSGFit:
             seen["p"] = p
             seen["random_state"] = random_state
             seen["approx_knn_kwargs"] = approx_knn_kwargs
-            seen["test_only"] = test_only
+            seen["_round_distances"] = _round_distances
             return (
                 payload[0],
                 payload[1],
@@ -190,7 +210,7 @@ class TestCoreSGFit:
             random_state=13,
             approx_knn_kwargs={"n_trees": 8},
         )
-        obj.fit(sample_X, 4, test_only=True)
+        obj._fit_for_tests(sample_X, 4)
 
         assert seen == {
             "shape": sample_X.shape,
@@ -199,14 +219,14 @@ class TestCoreSGFit:
             "p": 2,
             "random_state": 13,
             "approx_knn_kwargs": {"n_trees": 8},
-            "test_only": True,
+            "_round_distances": False,
         }
         with pytest.raises(
             AttributeError,
-            match="Attribute '_D' is available only when algorithm='core-sg'",
+            match="Attribute 'distance_matrix_' is available only when algorithm='core-sg'",
         ):
-            _ = obj._D
-        assert np.array_equal(obj._tree_to_labels_data, sample_X)
+            _ = obj.distance_matrix_
+        assert np.array_equal(obj._tree_to_labels_data_, sample_X)
         assert np.array_equal(obj.anti_hubs_, np.array([0, 2], dtype=np.int64))
 
     def test_score_sg_fit_raises_for_disconnected_support_graph(
@@ -229,4 +249,4 @@ class TestCoreSGFit:
         obj = core_sg_module.CoreSG(algorithm="score-sg")
 
         with pytest.raises(ValueError, match="support graph is disconnected"):
-            obj.fit(sample_X, 4, test_only=True)
+            obj._fit_for_tests(sample_X, 4)

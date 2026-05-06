@@ -148,7 +148,7 @@ The following public behavior did not change:
 
 - `from core_sg import CoreSG`
 - `CoreSG(...)`
-- `fit(X, k_max, test_only=False)`
+- `fit(X, k_max, _round_distances=False)`
 - `extract_mst_from_core_sg(k, toDF=False)`
 - `extract_hierarchy_from_core_sg(k, c=5)`
 - `get_fitted_hdbscan_objects(wrapped=True)`

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from time import time
-from typing import Any
+from typing import Any, Callable
 from warnings import warn
 
 import numpy as np
@@ -12,16 +12,35 @@ from .edges import add_mst_edges_to_metric_edges, build_knng_vectors
 from .hdbscan_adapter import (
     mst_to_single_linkage_tree,
     reference_mst_original_distance,
-    tree_to_labels as hdbscan_tree_to_labels,
     wrap_condensed_tree,
     wrap_minimum_spanning_tree,
     wrap_single_linkage_tree,
+)
+from .hdbscan_adapter import (
+    tree_to_labels as hdbscan_tree_to_labels,
 )
 from .knn import knn_from_precomputed
 from .mst_kruskal import kruskal_mst
 from .noise_handler import build_noise_handler
 from .reweight import reweight_core_sg_mutual_reachability, sort_core_sg
 from .score_sg import build_score_sg_from_data, is_graph_connected
+
+ProgressCallback = Callable[[str, float, dict[str, Any]], None]
+
+
+def _emit_progress(
+    event: str,
+    elapsed: float,
+    *,
+    verbose: int = 0,
+    progress_callback: ProgressCallback | None = None,
+    message: str | None = None,
+    **info: Any,
+) -> None:
+    if progress_callback is not None:
+        progress_callback(event, elapsed, dict(info))
+    if verbose:
+        print(message or f"{event} done in {elapsed:.2f}s")
 
 
 def build_core_sg_from_data(
@@ -31,7 +50,7 @@ def build_core_sg_from_data(
     metric: str = "euclidean",
     p: int = 2,
     pairwise_dtype=np.float64,
-    test_only: bool = False,
+    _round_distances: bool = False,
 ):
     """
     Gets X (n, d), calculates pairwise distances D (n, n) and build:
@@ -64,7 +83,7 @@ def build_core_sg_from_data(
     D = np.ascontiguousarray(D, dtype=pairwise_dtype)
     np.fill_diagonal(D, 0.0)
 
-    if test_only:
+    if _round_distances:
         D = D.round(4)
 
     # ------------------------------------------------------------------
@@ -136,7 +155,9 @@ def mst_from_core_sg(
     core_k_list: np.ndarray,
     n_nodes: int,
     k: int,
-    debug: bool = False,
+    *,
+    verbose: int = 0,
+    progress_callback: ProgressCallback | None = None,
 ):
     """
     Reweight -> Kruskal ->
@@ -159,9 +180,15 @@ def mst_from_core_sg(
         n_nodes=n_nodes,
     )
 
-    if debug:
-        t1 = time()
-        print(f"REWEIGHT Core_SG = {k} done in {t1 - t0:.2f}s")
+    t1 = time()
+    _emit_progress(
+        "reweight",
+        t1 - t0,
+        verbose=verbose,
+        progress_callback=progress_callback,
+        message=f"REWEIGHT Core_SG = {k} done in {t1 - t0:.2f}s",
+        k=k,
+    )
 
     t0 = time()
     mst_rec = kruskal_mst(weighted, n_nodes=n_nodes)
@@ -169,9 +196,15 @@ def mst_from_core_sg(
         np.float64, copy=False
     )
     mst_arr = mst_arr[np.argsort(mst_arr[:, 2], kind="mergesort")]
-    if debug:
-        t1 = time()
-        print(f"KRUSKAL Core_SG = {k} done in {t1 - t0:.2f}s")
+    t1 = time()
+    _emit_progress(
+        "kruskal",
+        t1 - t0,
+        verbose=verbose,
+        progress_callback=progress_callback,
+        message=f"KRUSKAL Core_SG = {k} done in {t1 - t0:.2f}s",
+        k=k,
+    )
 
     return mst_arr
 
@@ -247,7 +280,7 @@ def tree_to_labels(
     tree_kwargs = obj._get_tree_to_labels_kwargs()
 
     return hdbscan_tree_to_labels(
-        obj._tree_to_labels_data,
+        obj._tree_to_labels_data_,
         single_linkage_tree,
         tree_kwargs=tree_kwargs,
         min_spanning_tree=min_spanning_tree,
@@ -284,7 +317,8 @@ class CoreSG:
         self,
         metric: str = "euclidean",
         p: int = 2,
-        debug: bool = False,
+        verbose: int = 0,
+        progress_callback: ProgressCallback | None = None,
         no_noise: bool = True,
         noise_label_strategy: str = "mst_label_propagation",
         algorithm: str = "core-sg",
@@ -301,8 +335,12 @@ class CoreSG:
             Distance metric used to build the pairwise distances / Core-SG.
         p : int, default=2
             Power parameter for metrics such as Minkowski.
-        debug : bool, default=False
-            If True, prints execution times for the main steps.
+        verbose : int, default=0
+            Verbosity level. If greater than zero, progress messages are
+            printed during the main computational steps.
+        progress_callback : callable, default=None
+            Optional callback called as
+            `progress_callback(event, elapsed, info)` after timed steps.
         no_noise : bool, default=True
             If True, points labeled as `-1` after hierarchy extraction are
             optionally reassigned through a post-processing strategy. This
@@ -326,10 +364,15 @@ class CoreSG:
             raise ValueError("algorithm must be one of {'core-sg', 'score-sg'}.")
         if approx_knn_kwargs is not None and not isinstance(approx_knn_kwargs, dict):
             raise TypeError("approx_knn_kwargs must be a dictionary or None.")
+        if not isinstance(verbose, int) or verbose < 0:
+            raise ValueError("verbose must be an integer greater than or equal to 0.")
+        if progress_callback is not None and not callable(progress_callback):
+            raise TypeError("progress_callback must be callable or None.")
 
         self.metric = metric
         self.p = p
-        self.debug = debug
+        self.verbose = verbose
+        self.progress_callback = progress_callback
         self.no_noise = no_noise
         self.noise_label_strategy = noise_label_strategy
         self.algorithm = algorithm
@@ -341,43 +384,43 @@ class CoreSG:
         build_noise_handler(self.noise_label_strategy, c=5)
 
         # Global fit metadata
-        self.n = None
-        self.k_max = None
-        self._raw_data = None
+        self.n_samples_ = None
+        self.k_max_ = None
+        self._raw_data_ = None
 
         # Cached artifacts for k_max
-        self._condensed_tree_k_max = None
-        self.labels_k_max = None
-        self.probabilities_k_max = None
-        self.cluster_persistence_k_max = None
-        self._single_linkage_tree_k_max = None
-        self._min_spanning_tree_k_max = None
+        self._condensed_tree_k_max_array_ = None
+        self.labels_k_max_ = None
+        self.probabilities_k_max_ = None
+        self.cluster_persistence_k_max_ = None
+        self._single_linkage_tree_k_max_array_ = None
+        self._min_spanning_tree_k_max_array_ = None
 
         # Shared Core-SG structures
-        self._core_sg = None
-        self._metric_edges = None
-        self._core_k_list = None
-        self._dense_distance_matrix = None
-        self._tree_to_labels_data = None
+        self.support_graph_ = None
+        self.metric_edges_ = None
+        self.core_distances_ = None
+        self._dense_distance_matrix_ = None
+        self._tree_to_labels_data_ = None
         self._score_sg_anti_hubs = None
 
         # Current artifacts for an extracted k
         self.labels_ = None
         self.probabilities_ = None
         self.cluster_persistence_ = None
-        self._condensed_tree = None
-        self._single_linkage_tree = None
-        self._min_spanning_tree = None
+        self._condensed_tree_array_ = None
+        self._single_linkage_tree_array_ = None
+        self._min_spanning_tree_array_ = None
 
     def get_core_sg_mutual_reachability_distance(self, k: int):
         self._validate_k(k)
         return core_sg_mutual_reachability_distance(
-            self._core_sg, self._metric_edges, self._core_k_list, self.n, self.k_max, k
+            self.support_graph_, self.metric_edges_, self.core_distances_, self.n_samples_, self.k_max_, k
         )
 
     def get_core_distance(self, k):
         self._validate_k(k)
-        core_k = self._core_k_list[:, k - 1]
+        core_k = self.core_distances_[:, k - 1]
         core_k = np.ascontiguousarray(core_k, dtype=np.float64)
         return core_k
 
@@ -390,14 +433,16 @@ class CoreSG:
         )
 
     @property
-    def _D(self):
+    def distance_matrix_(self):
         if self.algorithm != "core-sg":
-            self._raise_algorithm_specific_attribute_error("_D", algorithm="core-sg")
-        return self._dense_distance_matrix
+            self._raise_algorithm_specific_attribute_error(
+                "distance_matrix_", algorithm="core-sg"
+            )
+        return self._dense_distance_matrix_
 
-    @_D.setter
-    def _D(self, value):
-        self._dense_distance_matrix = value
+    @distance_matrix_.setter
+    def distance_matrix_(self, value):
+        self._dense_distance_matrix_ = value
 
     @property
     def anti_hubs_(self):
@@ -437,9 +482,9 @@ class CoreSG:
             HDBSCAN-like fitted object returned by `build_core_sg_from_data`.
         """
         self.condensed_tree_k_max_ = hdb_obj._condensed_tree
-        self.labels_k_max = hdb_obj.labels_
-        self.probabilities_k_max = hdb_obj.probabilities_
-        self.cluster_persistence_k_max = hdb_obj.cluster_persistence_
+        self.labels_k_max_ = hdb_obj.labels_
+        self.probabilities_k_max_ = hdb_obj.probabilities_
+        self.cluster_persistence_k_max_ = hdb_obj.cluster_persistence_
         self.single_linkage_tree_k_max_ = hdb_obj._single_linkage_tree
         self.minimum_spanning_tree_k_max_ = hdb_obj._min_spanning_tree
 
@@ -453,15 +498,15 @@ class CoreSG:
         single_linkage_tree: np.ndarray,
         min_spanning_tree: np.ndarray,
     ) -> None:
-        self.labels_k_max = labels
-        self.probabilities_k_max = probabilities
-        self.cluster_persistence_k_max = cluster_persistence
+        self.labels_k_max_ = labels
+        self.probabilities_k_max_ = probabilities
+        self.cluster_persistence_k_max_ = cluster_persistence
         self.condensed_tree_k_max_ = condensed_tree
         self.single_linkage_tree_k_max_ = single_linkage_tree
         self.minimum_spanning_tree_k_max_ = min_spanning_tree
 
     def _build_by_algorithm(
-        self, X: np.ndarray, k_max: int, test_only: bool
+        self, X: np.ndarray, k_max: int, *, _round_distances: bool = False
     ) -> tuple[
         np.ndarray, np.ndarray, np.ndarray, np.ndarray, Any | None, np.ndarray | None
     ]:
@@ -471,7 +516,7 @@ class CoreSG:
                 k_max=k_max,
                 metric=self.metric,
                 p=self.p,
-                test_only=test_only,
+                _round_distances=_round_distances,
             ) + (None,)
         if self.algorithm == "score-sg":
             core_sg, metric_edges, core_k_list, tree_to_labels_data, anti_hubs = (
@@ -482,7 +527,6 @@ class CoreSG:
                     p=self.p,
                     random_state=self.random_state,
                     approx_knn_kwargs=self.approx_knn_kwargs,
-                    test_only=test_only,
                 )
             )
             return (
@@ -497,19 +541,20 @@ class CoreSG:
         raise ValueError("algorithm must be one of {'core-sg', 'score-sg'}.")
 
     def _extract_score_sg_k_max_outputs(self) -> None:
-        if not is_graph_connected(self._core_sg, self.n):
+        if not is_graph_connected(self.support_graph_, self.n_samples_):
             raise ValueError(
                 "score-sg support graph is disconnected for k_max, so an MST "
                 "cannot be extracted from the constructed support graph."
             )
 
         mst_k_max = mst_from_core_sg(
-            core_sg=self._core_sg,
-            metric_edges=self._metric_edges,
-            core_k_list=self._core_k_list,
-            n_nodes=self.n,
-            k=self.k_max,
-            debug=self.debug,
+            core_sg=self.support_graph_,
+            metric_edges=self.metric_edges_,
+            core_k_list=self.core_distances_,
+            n_nodes=self.n_samples_,
+            k=self.k_max_,
+            verbose=self.verbose,
+            progress_callback=self.progress_callback,
         )
         single_linkage_tree = mst_to_single_linkage_tree(mst_k_max)
         (
@@ -537,12 +582,12 @@ class CoreSG:
         )
 
     def _ensure_fitted(self) -> None:
-        if self.k_max is None or self.n is None:
+        if self.k_max_ is None or self.n_samples_ is None:
             raise AttributeError("CoreSG is not fitted yet. Run fit first.")
 
     def _validate_k(self, k: int) -> None:
         self._ensure_fitted()
-        if k <= 0 or k > self.k_max:
+        if k <= 0 or k > self.k_max_:
             raise ValueError("k invalid (1 <= k <= k_max).")
         if k < 2:
             raise ValueError("k must be >= 2.")
@@ -559,8 +604,8 @@ class CoreSG:
         handler = build_noise_handler(self.noise_label_strategy, c=c)
         self.labels_ = handler.reassign(
             labels=self.labels_,
-            min_spanning_tree=self._min_spanning_tree,
-            n_samples=self.n,
+            min_spanning_tree=self._min_spanning_tree_array_,
+            n_samples=self.n_samples_,
         )
 
     @staticmethod
@@ -605,8 +650,8 @@ class CoreSG:
             If no current condensed tree is available.
         """
 
-        if self._condensed_tree is not None:
-            return wrap_condensed_tree(self._condensed_tree, self.labels_)
+        if self._condensed_tree_array_ is not None:
+            return wrap_condensed_tree(self._condensed_tree_array_, self.labels_)
 
         raise AttributeError(
             "No condensed tree was generated for the current k; "
@@ -615,7 +660,7 @@ class CoreSG:
 
     @condensed_tree_.setter
     def condensed_tree_(self, value):
-        self._condensed_tree = value
+        self._condensed_tree_array_ = value
 
     @property
     def condensed_tree_k_max_(self):
@@ -633,8 +678,8 @@ class CoreSG:
             If no fit-time condensed tree is available.
         """
 
-        if self._condensed_tree_k_max is not None:
-            return wrap_condensed_tree(self._condensed_tree_k_max, self.labels_k_max)
+        if self._condensed_tree_k_max_array_ is not None:
+            return wrap_condensed_tree(self._condensed_tree_k_max_array_, self.labels_k_max_)
 
         raise AttributeError(
             "No condensed tree was saved from fit; try running fit first."
@@ -642,7 +687,7 @@ class CoreSG:
 
     @condensed_tree_k_max_.setter
     def condensed_tree_k_max_(self, value):
-        self._condensed_tree_k_max = value
+        self._condensed_tree_k_max_array_ = value
 
     @property
     def single_linkage_tree_(self):
@@ -660,8 +705,8 @@ class CoreSG:
             If no current single linkage tree is available.
         """
 
-        if self._single_linkage_tree is not None:
-            return wrap_single_linkage_tree(self._single_linkage_tree)
+        if self._single_linkage_tree_array_ is not None:
+            return wrap_single_linkage_tree(self._single_linkage_tree_array_)
 
         raise AttributeError(
             "No single linkage tree was generated for the current k; "
@@ -670,10 +715,12 @@ class CoreSG:
 
     @single_linkage_tree_.setter
     def single_linkage_tree_(self, value):
-        self._single_linkage_tree = value
+        self._single_linkage_tree_array_ = value
 
-    def set_debug(self, value):
-        self.debug = value
+    def set_verbose(self, value: int) -> None:
+        if not isinstance(value, int) or value < 0:
+            raise ValueError("verbose must be an integer greater than or equal to 0.")
+        self.verbose = value
 
     @property
     def single_linkage_tree_k_max_(self):
@@ -691,8 +738,8 @@ class CoreSG:
             If no fit-time single linkage tree is available.
         """
 
-        if self._single_linkage_tree_k_max is not None:
-            return wrap_single_linkage_tree(self._single_linkage_tree_k_max)
+        if self._single_linkage_tree_k_max_array_ is not None:
+            return wrap_single_linkage_tree(self._single_linkage_tree_k_max_array_)
 
         raise AttributeError(
             "No single linkage tree was saved from fit; try running fit first."
@@ -700,7 +747,7 @@ class CoreSG:
 
     @single_linkage_tree_k_max_.setter
     def single_linkage_tree_k_max_(self, value):
-        self._single_linkage_tree_k_max = value
+        self._single_linkage_tree_k_max_array_ = value
 
     @property
     def minimum_spanning_tree_(self):
@@ -719,14 +766,14 @@ class CoreSG:
             If no current MST is available.
         """
 
-        if self._min_spanning_tree is None:
+        if self._min_spanning_tree_array_ is None:
             raise AttributeError(
                 "No minimum spanning tree was generated for the current k; "
                 "try running extract_hierarchy_from_core_sg first."
             )
 
-        if self._raw_data is not None:
-            return wrap_minimum_spanning_tree(self._min_spanning_tree, self._raw_data)
+        if self._raw_data_ is not None:
+            return wrap_minimum_spanning_tree(self._min_spanning_tree_array_, self._raw_data_)
 
         warn(
             "No raw data is available; this may be due to using a "
@@ -737,7 +784,7 @@ class CoreSG:
 
     @minimum_spanning_tree_.setter
     def minimum_spanning_tree_(self, value):
-        self._min_spanning_tree = value
+        self._min_spanning_tree_array_ = value
 
     @property
     def minimum_spanning_tree_k_max_(self):
@@ -756,14 +803,14 @@ class CoreSG:
             If no fit-time MST is available.
         """
 
-        if self._min_spanning_tree_k_max is None:
+        if self._min_spanning_tree_k_max_array_ is None:
             raise AttributeError(
                 "No minimum spanning tree was saved from fit; try running fit first."
             )
 
-        if self._raw_data is not None:
+        if self._raw_data_ is not None:
             return wrap_minimum_spanning_tree(
-                self._min_spanning_tree_k_max, self._raw_data
+                self._min_spanning_tree_k_max_array_, self._raw_data_
             )
 
         warn(
@@ -775,7 +822,7 @@ class CoreSG:
 
     @minimum_spanning_tree_k_max_.setter
     def minimum_spanning_tree_k_max_(self, value):
-        self._min_spanning_tree_k_max = value
+        self._min_spanning_tree_k_max_array_ = value
 
     def get_fitted_hdbscan_objects(self, wrapped: bool = True) -> dict[str, Any]:
         """
@@ -802,29 +849,53 @@ class CoreSG:
         AttributeError
             If the object has not been fitted yet.
         """
-        if self.k_max is None:
+        if self.k_max_ is None:
             raise AttributeError("CoreSG is not fitted yet. Run fit first.")
 
         if wrapped:
             return {
-                "labels_": self.labels_k_max,
-                "probabilities_": self.probabilities_k_max,
-                "cluster_persistence_": self.cluster_persistence_k_max,
+                "labels_": self.labels_k_max_,
+                "probabilities_": self.probabilities_k_max_,
+                "cluster_persistence_": self.cluster_persistence_k_max_,
                 "condensed_tree_": self.condensed_tree_k_max_,
                 "single_linkage_tree_": self.single_linkage_tree_k_max_,
                 "minimum_spanning_tree_": self.minimum_spanning_tree_k_max_,
             }
 
         return {
-            "labels_": self.labels_k_max,
-            "probabilities_": self.probabilities_k_max,
-            "cluster_persistence_": self.cluster_persistence_k_max,
-            "condensed_tree_": self._condensed_tree_k_max,
-            "single_linkage_tree_": self._single_linkage_tree_k_max,
-            "minimum_spanning_tree_": self._min_spanning_tree_k_max,
+            "labels_": self.labels_k_max_,
+            "probabilities_": self.probabilities_k_max_,
+            "cluster_persistence_": self.cluster_persistence_k_max_,
+            "condensed_tree_": self._condensed_tree_k_max_array_,
+            "single_linkage_tree_": self._single_linkage_tree_k_max_array_,
+            "minimum_spanning_tree_": self._min_spanning_tree_k_max_array_,
         }
 
-    def fit(self, X: np.ndarray, k_max: int, test_only: bool = False) -> "CoreSG":
+    def fit(self, X: np.ndarray, k_max: int) -> "CoreSG":
+        """
+        Build the Core-SG support for a reference value `k_max`.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Input data matrix.
+        k_max : int
+            Maximum neighborhood size used to build the reusable Core-SG
+            support.
+
+        Returns
+        -------
+        CoreSG
+            The fitted instance itself.
+        """
+        return self._fit(X, k_max, _round_distances=False)
+
+    def _fit_for_tests(self, X: np.ndarray, k_max: int) -> "CoreSG":
+        return self._fit(X, k_max, _round_distances=True)
+
+    def _fit(
+        self, X: np.ndarray, k_max: int, *, _round_distances: bool = False
+    ) -> "CoreSG":
         """
         Build the Core-SG for a reference value `k_max`.
 
@@ -840,28 +911,37 @@ class CoreSG:
         CoreSG
             The fitted instance itself.
         """
-        self.n = X.shape[0]
-        self.k_max = k_max
+        self.n_samples_ = X.shape[0]
+        self.k_max_ = k_max
 
         # Segue a lógica do HDBSCAN: o wrapper do MST depende dos dados crus.
-        self._raw_data = X
+        self._raw_data_ = X
 
         t0 = time()
         (
-            self._core_sg,
-            self._metric_edges,
-            self._core_k_list,
+            self.support_graph_,
+            self.metric_edges_,
+            self.core_distances_,
             tree_to_labels_data,
             hdb_obj,
             anti_hubs,
-        ) = self._build_by_algorithm(X, k_max, test_only)
-        self._tree_to_labels_data = tree_to_labels_data
-        self._D = tree_to_labels_data if self.algorithm == "core-sg" else None
+        ) = self._build_by_algorithm(X, k_max, _round_distances=_round_distances)
+        self._tree_to_labels_data_ = tree_to_labels_data
+        self._dense_distance_matrix_ = (
+            tree_to_labels_data if self.algorithm == "core-sg" else None
+        )
         self.anti_hubs_ = anti_hubs
         t1 = time()
 
-        if self.debug:
-            print(f"Core-SG build done in {t1 - t0:.2f}s")
+        _emit_progress(
+            "build",
+            t1 - t0,
+            verbose=self.verbose,
+            progress_callback=self.progress_callback,
+            message=f"Core-SG build done in {t1 - t0:.2f}s",
+            k_max=k_max,
+            algorithm=self.algorithm,
+        )
 
         if self.algorithm == "core-sg":
             self._store_k_max_outputs(hdb_obj)
@@ -887,20 +967,21 @@ class CoreSG:
             The extracted MST, either as a NumPy array or as a DataFrame.
         """
         self._validate_k(k)
-        if self.k_max == k:
+        if self.k_max_ == k:
             if toDF:
-                return self._mst_to_dataframe(self._min_spanning_tree_k_max)
-            return self._min_spanning_tree_k_max
+                return self._mst_to_dataframe(self._min_spanning_tree_k_max_array_)
+            return self._min_spanning_tree_k_max_array_
 
         t0 = time()
         try:
             mst_core = mst_from_core_sg(
-                core_sg=self._core_sg,
-                metric_edges=self._metric_edges,
-                core_k_list=self._core_k_list,
-                n_nodes=self.n,
+                core_sg=self.support_graph_,
+                metric_edges=self.metric_edges_,
+                core_k_list=self.core_distances_,
+                n_nodes=self.n_samples_,
                 k=k,
-                debug=self.debug,
+                verbose=self.verbose,
+                progress_callback=self.progress_callback,
             )
         except ValueError as exc:
             if self.algorithm == "score-sg" and "Disconex Graph" in str(exc):
@@ -911,8 +992,14 @@ class CoreSG:
             raise
         t1 = time()
 
-        if self.debug:
-            print(f"Core-SG MST K = {k} (Kruskal) done in {t1 - t0:.2f}s")
+        _emit_progress(
+            "extract_mst",
+            t1 - t0,
+            verbose=self.verbose,
+            progress_callback=self.progress_callback,
+            message=f"Core-SG MST K = {k} (Kruskal) done in {t1 - t0:.2f}s",
+            k=k,
+        )
 
         if toDF:
             return self._mst_to_dataframe(mst_core)
@@ -947,7 +1034,7 @@ class CoreSG:
         self._validate_k(k)
         self._validate_noise_handler_c(c)
 
-        if self.k_max == k:
+        if self.k_max_ == k:
             (
                 self.labels_,
                 self.probabilities_,
@@ -957,9 +1044,9 @@ class CoreSG:
                 min_spanning_tree,
             ) = self.get_fitted_hdbscan_objects(wrapped=False).values()
 
-            self._condensed_tree = condensed_tree
-            self._single_linkage_tree = single_linkage_tree
-            self._min_spanning_tree = min_spanning_tree
+            self._condensed_tree_array_ = condensed_tree
+            self._single_linkage_tree_array_ = single_linkage_tree
+            self._min_spanning_tree_array_ = min_spanning_tree
             self._apply_noise_handler(c=c)
 
             return None
@@ -978,12 +1065,18 @@ class CoreSG:
         ) = tree_to_labels(self, single_linkage_tree, min_spanning_tree)
         t1 = time()
 
-        self._condensed_tree = condensed_tree
-        self._single_linkage_tree = single_linkage_tree
-        self._min_spanning_tree = min_spanning_tree
+        self._condensed_tree_array_ = condensed_tree
+        self._single_linkage_tree_array_ = single_linkage_tree
+        self._min_spanning_tree_array_ = min_spanning_tree
         self._apply_noise_handler(c=c)
 
-        if self.debug:
-            print(f"FOSC K = {k} done in {t1 - t0:.2f}s")
+        _emit_progress(
+            "extract_hierarchy",
+            t1 - t0,
+            verbose=self.verbose,
+            progress_callback=self.progress_callback,
+            message=f"FOSC K = {k} done in {t1 - t0:.2f}s",
+            k=k,
+        )
 
         return None

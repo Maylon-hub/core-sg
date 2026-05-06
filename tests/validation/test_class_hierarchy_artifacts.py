@@ -17,9 +17,9 @@ class TestClassHierarchyArtifacts:
         k_max = 30
 
         core_sg = CoreSG(
-            metric="euclidean", p=2, debug=True, match_reference_implementation=True
+            metric="euclidean", p=2, verbose=1, match_reference_implementation=True
         )
-        core_sg.fit(X, k_max, test_only=True)
+        core_sg._fit_for_tests(X, k_max)
 
         for k_iter in range(k_max, 2, -2):
             try:

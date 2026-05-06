@@ -12,7 +12,7 @@ class TestCoreSGInitialization:
 
         assert obj.metric == "euclidean"
         assert obj.p == 2
-        assert obj.debug is False
+        assert obj.verbose == 0
         assert obj.no_noise is True
         assert obj.noise_label_strategy == "mst_label_propagation"
         assert obj.algorithm == "core-sg"
@@ -20,13 +20,13 @@ class TestCoreSGInitialization:
         assert obj.approx_knn_kwargs is None
         assert obj.hdbscan_kwargs == {}
 
-        assert obj.n is None
-        assert obj.k_max is None
-        assert obj._core_sg is None
-        assert obj._metric_edges is None
-        assert obj._core_k_list is None
-        assert obj._D is None
-        assert obj._tree_to_labels_data is None
+        assert obj.n_samples_ is None
+        assert obj.k_max_ is None
+        assert obj.support_graph_ is None
+        assert obj.metric_edges_ is None
+        assert obj.core_distances_ is None
+        assert obj.distance_matrix_ is None
+        assert obj._tree_to_labels_data_ is None
         with pytest.raises(
             AttributeError,
             match="Attribute 'anti_hubs_' is available only when algorithm='score-sg'",
@@ -36,9 +36,9 @@ class TestCoreSGInitialization:
         assert obj.labels_ is None
         assert obj.probabilities_ is None
         assert obj.cluster_persistence_ is None
-        assert obj._condensed_tree is None
-        assert obj._single_linkage_tree is None
-        assert obj._min_spanning_tree is None
+        assert obj._condensed_tree_array_ is None
+        assert obj._single_linkage_tree_array_ is None
+        assert obj._min_spanning_tree_array_ is None
 
     def test_init_accepts_noise_configuration(self, core_sg_module):
         obj = core_sg_module.CoreSG(
@@ -82,6 +82,16 @@ class TestCoreSGInitialization:
         with pytest.raises(TypeError, match="approx_knn_kwargs must be a dictionary"):
             core_sg_module.CoreSG(approx_knn_kwargs=["bad"])
 
+    def test_init_rejects_invalid_verbose(self, core_sg_module):
+        with pytest.raises(
+            ValueError, match="verbose must be an integer greater than or equal to 0"
+        ):
+            core_sg_module.CoreSG(verbose=-1)
+
+    def test_init_rejects_non_callable_progress_callback(self, core_sg_module):
+        with pytest.raises(TypeError, match="progress_callback must be callable"):
+            core_sg_module.CoreSG(progress_callback="not-callable")
+
     def test_score_sg_blocks_access_to_core_sg_specific_D_attribute(
         self, core_sg_module
     ):
@@ -89,9 +99,9 @@ class TestCoreSGInitialization:
 
         with pytest.raises(
             AttributeError,
-            match="Attribute '_D' is available only when algorithm='core-sg'",
+            match="Attribute 'distance_matrix_' is available only when algorithm='core-sg'",
         ):
-            _ = obj._D
+            _ = obj.distance_matrix_
 
     def test_score_sg_allows_access_to_anti_hubs_attribute_before_fit(
         self, core_sg_module
