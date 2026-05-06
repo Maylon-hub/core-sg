@@ -169,7 +169,7 @@ class TestCoreSGFit:
         )
         monkeypatch.setattr(
             core_sg_module,
-            "label",
+            "mst_to_single_linkage_tree",
             lambda mst: payload[4]._single_linkage_tree,
         )
         monkeypatch.setattr(
