@@ -58,7 +58,9 @@ class TestCoreSGFit:
         assert np.array_equal(
             obj._single_linkage_tree_k_max_array_, hdb_obj._single_linkage_tree
         )
-        assert np.array_equal(obj._min_spanning_tree_k_max_array_, hdb_obj._min_spanning_tree)
+        assert np.array_equal(
+            obj._min_spanning_tree_k_max_array_, hdb_obj._min_spanning_tree
+        )
 
     def test_fit_reports_progress_through_callback(
         self, core_sg_module, patched_fit_dependencies, sample_X
@@ -134,7 +136,9 @@ class TestCoreSGFit:
 
         assert fitted["condensed_tree_"].to_pandas().shape[0] >= obj.n_samples_
         assert fitted["single_linkage_tree_"].to_pandas().shape[0] == obj.n_samples_ - 1
-        assert fitted["minimum_spanning_tree_"].to_pandas().shape[0] == obj.n_samples_ - 1
+        assert (
+            fitted["minimum_spanning_tree_"].to_pandas().shape[0] == obj.n_samples_ - 1
+        )
 
     def test_minimum_spanning_tree_fit_wrapper_warns_without_raw_data(
         self, core_sg_module, patched_fit_dependencies, sample_X

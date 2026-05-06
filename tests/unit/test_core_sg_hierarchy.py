@@ -89,7 +89,12 @@ class TestCoreSGHierarchy:
         )
         slt_small = mst_small + 0.5
         condensed = np.column_stack(
-            [np.arange(obj.n_samples_), np.arange(obj.n_samples_), np.ones(obj.n_samples_), np.full(obj.n_samples_, 2.0)]
+            [
+                np.arange(obj.n_samples_),
+                np.arange(obj.n_samples_),
+                np.ones(obj.n_samples_),
+                np.full(obj.n_samples_, 2.0),
+            ]
         ).astype(np.float64)
         labels = np.array([0, 0, 0, 1, 1, 1], dtype=np.int64)
         probabilities = np.linspace(0.5, 1.0, obj.n_samples_)
@@ -144,9 +149,15 @@ class TestCoreSGHierarchy:
         assert np.array_equal(obj.labels_, obj.labels_k_max_)
         assert np.array_equal(obj.probabilities_, obj.probabilities_k_max_)
         assert np.array_equal(obj.cluster_persistence_, obj.cluster_persistence_k_max_)
-        assert np.array_equal(obj._condensed_tree_array_, obj._condensed_tree_k_max_array_)
-        assert np.array_equal(obj._single_linkage_tree_array_, obj._single_linkage_tree_k_max_array_)
-        assert np.array_equal(obj._min_spanning_tree_array_, obj._min_spanning_tree_k_max_array_)
+        assert np.array_equal(
+            obj._condensed_tree_array_, obj._condensed_tree_k_max_array_
+        )
+        assert np.array_equal(
+            obj._single_linkage_tree_array_, obj._single_linkage_tree_k_max_array_
+        )
+        assert np.array_equal(
+            obj._min_spanning_tree_array_, obj._min_spanning_tree_k_max_array_
+        )
 
     def test_extract_hierarchy_uses_default_c_for_noise_handler(
         self, core_sg_module, fitted_obj, monkeypatch
@@ -336,7 +347,12 @@ class TestCoreSGHierarchy:
             dtype=np.float64,
         )
         condensed = np.column_stack(
-            [np.arange(obj.n_samples_), np.arange(obj.n_samples_), np.ones(obj.n_samples_), np.full(obj.n_samples_, 2.0)]
+            [
+                np.arange(obj.n_samples_),
+                np.arange(obj.n_samples_),
+                np.ones(obj.n_samples_),
+                np.full(obj.n_samples_, 2.0),
+            ]
         ).astype(np.float64)
 
         monkeypatch.setattr(

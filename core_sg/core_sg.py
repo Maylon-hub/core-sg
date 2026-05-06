@@ -415,7 +415,12 @@ class CoreSG:
     def get_core_sg_mutual_reachability_distance(self, k: int):
         self._validate_k(k)
         return core_sg_mutual_reachability_distance(
-            self.support_graph_, self.metric_edges_, self.core_distances_, self.n_samples_, self.k_max_, k
+            self.support_graph_,
+            self.metric_edges_,
+            self.core_distances_,
+            self.n_samples_,
+            self.k_max_,
+            k,
         )
 
     def get_core_distance(self, k):
@@ -679,7 +684,9 @@ class CoreSG:
         """
 
         if self._condensed_tree_k_max_array_ is not None:
-            return wrap_condensed_tree(self._condensed_tree_k_max_array_, self.labels_k_max_)
+            return wrap_condensed_tree(
+                self._condensed_tree_k_max_array_, self.labels_k_max_
+            )
 
         raise AttributeError(
             "No condensed tree was saved from fit; try running fit first."
@@ -773,7 +780,9 @@ class CoreSG:
             )
 
         if self._raw_data_ is not None:
-            return wrap_minimum_spanning_tree(self._min_spanning_tree_array_, self._raw_data_)
+            return wrap_minimum_spanning_tree(
+                self._min_spanning_tree_array_, self._raw_data_
+            )
 
         warn(
             "No raw data is available; this may be due to using a "

@@ -26,7 +26,9 @@ class TestClassExtractedMSTMatchesReference:
 
         for k_iter in range(30, 2, -2):
             mst_core = extracted_class_core_sg.extract_mst_from_core_sg(k_iter)
-            mst_hdb = reference_mst_builder(extracted_class_core_sg.distance_matrix_, k_iter)
+            mst_hdb = reference_mst_builder(
+                extracted_class_core_sg.distance_matrix_, k_iter
+            )
             result = validate_mst_from_core_sg(mst_core, mst_hdb, n, k_iter)
 
             if not result.ok:

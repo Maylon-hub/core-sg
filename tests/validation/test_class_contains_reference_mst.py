@@ -25,7 +25,9 @@ class TestClassContainsReferenceMST:
         n = validation_dataset["n"]
 
         for k_iter in range(30, 2, -2):
-            mst_hdb = reference_mst_builder(fitted_class_core_sg.distance_matrix_, k_iter)
+            mst_hdb = reference_mst_builder(
+                fitted_class_core_sg.distance_matrix_, k_iter
+            )
             result = validate_mst_in_core_sg(
                 fitted_class_core_sg.support_graph_, mst_hdb, n, k_iter
             )

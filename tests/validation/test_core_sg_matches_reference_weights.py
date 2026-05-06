@@ -14,7 +14,11 @@ pytestmark = [pytest.mark.validation, pytest.mark.slow]
 def weighted_core_sg(validation_dataset):
     X = validation_dataset["X"]
     core_sg, metric_edges, core_k_list, D, hdb_obj = build_core_sg_from_data(
-        X, k_max=30, metric="euclidean", pairwise_dtype=np.float64, _round_distances=True
+        X,
+        k_max=30,
+        metric="euclidean",
+        pairwise_dtype=np.float64,
+        _round_distances=True,
     )
     return {
         "core_sg": core_sg,

@@ -25,7 +25,9 @@ class TestClassMatchesReferenceWeights:
         n = validation_dataset["n"]
 
         for k_iter in range(50, 2, -2):
-            mst_hdb = reference_mst_builder(weighted_class_core_sg.distance_matrix_, k_iter)
+            mst_hdb = reference_mst_builder(
+                weighted_class_core_sg.distance_matrix_, k_iter
+            )
             weighted = weighted_class_core_sg.get_core_sg_mutual_reachability_distance(
                 k_iter
             )
