@@ -5,9 +5,9 @@
 [![Tests](https://img.shields.io/github/actions/workflow/status/midas-core-sg/core-sg/test.yml?branch=develop&label=tests)](https://github.com/midas-core-sg/core-sg/actions/workflows/test.yml)
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
 
-Core-SG - Core Support Graph for efficient computation of multiple MSTs and HDBSCAN-style hierarchy outputs over varying values of `k`. Core-SG builds reusable graph support at `k_max` and then extracts minimum spanning trees and hierarchy artifacts for smaller values of `k <= k_max`. This allows Core-SG to support repeated multi-`k` analysis more efficiently than rebuilding the full structure for each `k`.
+Core-SG - Core Support Graph for efficient computation of multiple MSTs and HDBSCAN-style hierarchy outputs over varying values of `k`. The recommended public workflow is the scikit-learn-style `CoreSGClusterer`, which builds reusable graph support at `k_max` and then extracts hierarchy artifacts for smaller values of `k <= k_max` without rebuilding the full structure each time.
 
-In practice this means that Core-SG lets you fit once at `k_max` and reuse the result straight away for many smaller `k` values with little or no extra setup, while keeping familiar HDBSCAN-like outputs such as `labels_`, `probabilities_`, `cluster_persistence_`, `condensed_tree_`, `single_linkage_tree_`, and `minimum_spanning_tree_`.
+In practice this means that `CoreSGClusterer` lets you fit once at `k_max` and reuse the result straight away for many smaller `k` values with little or no extra setup, while keeping familiar HDBSCAN-like outputs such as `labels_`, `probabilities_`, `cluster_persistence_`, `condensed_tree_`, `single_linkage_tree_`, and `minimum_spanning_tree_`.
 
 Core-SG is ideal for exploratory multi-`k` density-based analysis; it is a practical approach for workflows where you want to compare smoothing levels on the same dataset and inspect graph-level artifacts, not only final labels.
 
@@ -25,11 +25,11 @@ Based on the papers:
 >R. Campello, D. Moulavi, and J. Sander. Density-Based Clustering Based on Hierarchical Density Estimates. In: Advances in Knowledge Discovery and Data Mining, Springer, pp. 160-172. 2013.
 
 
-Documentation and project overview are available in this repository. Notebooks comparing Core-SG to HDBSCAN and illustrating the intended multi-`k` workflow are available in [`notebooks/`](notebooks/).
+Documentation and project overview are available at https://midas-core-sg.github.io/core-sg/. Notebooks comparing Core-SG to HDBSCAN and illustrating the intended multi-`k` workflow are available in [`notebooks/`](notebooks/).
 
 ## What Core-SG is for
 
-Core-SG is designed for workflows where you need to compare multiple `k` values on the same dataset and you care about graph-level artifacts, not only final labels.
+Core-SG is designed for workflows where you need to compare multiple `k` values on the same dataset and you care about graph-level artifacts, not only final labels. Most users should start with `CoreSGClusterer`; the lower-level reusable object acts behind the estimator and remains available for advanced internal workflows.
 
 In practice, Core-SG helps you:
 
@@ -70,20 +70,7 @@ The package metadata, runtime dependencies, and optional extras are defined in `
 
 ## How to use Core-SG
 
-Core-SG is designed around a simple two-stage workflow:
-
-1. fit once with a reference `k_max`
-2. reuse the fitted support graph to extract results for any `k <= k_max`
-
-In practice:
-
-- use `fit(X, k_max=...)` to build the reusable support graph once
-- use `extract_mst_from_core_sg(k=...)` when you want only the MST
-- use `extract_hierarchy_from_core_sg(k=...)` when you want HDBSCAN-style outputs such as `labels_` and tree artifacts
-
-### Scikit-learn-style wrapper
-
-For estimator-style workflows, use `CoreSGClusterer`:
+Use `CoreSGClusterer` for the public user-facing workflow:
 
 ```python
 from sklearn.datasets import make_blobs
@@ -104,10 +91,10 @@ labels = clusterer.labels_
 
 In this API, `k_max` is a constructor parameter because it defines the reusable
 support graph capacity and is visible through `get_params()` / `set_params()`.
-The first `fit(X, y=None, *, k=...)` builds the native `CoreSG` object once with
-`CoreSG.fit(X, k_max=k_max)`. Later calls to `fit(...)` reuse `core_sg_` and
-only run `extract_hierarchy_from_core_sg(k)`. The decision to build or extract
-is based on whether `core_sg_` already exists, not on whether `k == k_max`.
+The first `fit(X, y=None, *, k=...)` builds the internal reusable Core-SG object
+once. Later calls to `fit(...)` reuse `core_sg_` and only extract the hierarchy
+for the requested `k`. The decision to build or extract is based on whether
+`core_sg_` already exists, not on whether `k == k_max`.
 
 The `k` argument defines the specific clustering extraction exposed by
 `labels_` and the other fitted attributes. If `k=None`, `fit` uses the fitted
@@ -137,11 +124,6 @@ labels_8 = clusterer.labels_
 `predict(...)` is intentionally not implemented yet because Core-SG does not
 currently define assignment semantics for unseen samples.
 
-Use `CoreSG` directly when you want the native graph API. Use `CoreSGClusterer`
-when you want a scikit-learn-style estimator interface that still preserves
-Core-SG's reusable multi-`k` behavior. The native object remains available
-through `clusterer.core_sg_`.
-
 More details are available in [`doc/estimators.md`](doc/estimators.md).
 
 ### Quick workflow
@@ -149,15 +131,15 @@ More details are available in [`doc/estimators.md`](doc/estimators.md).
 The most common usage pattern is:
 
 1. choose a largest neighborhood value `k_max`
-2. fit Core-SG once at that value
-3. extract hierarchy outputs for smaller `k` values that you want to compare
+2. create `CoreSGClusterer(k_max=...)`
+3. call `fit(X, k=...)` for each `k` value that you want to compare
 4. inspect `labels_`, `probabilities_`, persistence values, and tree objects
 
 ### Primary example
 
 ```python
 from sklearn.datasets import make_blobs
-from core_sg import CoreSG
+from core_sg import CoreSGClusterer
 
 # Example dataset used only to illustrate the workflow.
 X, _ = make_blobs(
@@ -167,33 +149,47 @@ X, _ = make_blobs(
     random_state=42,
 )
 
-# Build the reusable Core-SG support once at k_max.
-core = CoreSG(metric="euclidean", p=2)
-core.fit(X, k_max=15)
+# Build reusable support once and expose outputs for k=10.
+clusterer = CoreSGClusterer(k_max=15, metric="euclidean", p=2)
+clusterer.fit(X, k=10)
 
-# Reconstruct hierarchy outputs for a smaller k.
-core.extract_hierarchy_from_core_sg(k=10)
+# Read the HDBSCAN-style outputs exposed on the estimator.
+labels = clusterer.labels_
+probabilities = clusterer.probabilities_
+cluster_persistence = clusterer.cluster_persistence_
 
-# Read the HDBSCAN-style outputs exposed on the fitted instance.
-labels = core.labels_
-probabilities = core.probabilities_
-cluster_persistence = core.cluster_persistence_
+# Later calls reuse the same internal core_sg_ object.
+clusterer.fit(X, k=8)
+labels_8 = clusterer.labels_
 ```
 
 In this example, `k_max=15` is the largest neighborhood size used during the
-initial fit, while `k=10` is one of the smaller values extracted afterward from
-the same fitted support graph.
+initial fit, while `k=10` and `k=8` are extracted afterward from the same
+internal fitted support graph.
 
 ### Key parameters
 
-- `k_max`: largest neighborhood size used during `fit(...)`; this is the reference value that defines what smaller `k` values can later be extracted
-- `k`: neighborhood size used during `extract_mst_from_core_sg(...)` or `extract_hierarchy_from_core_sg(...)`; it must satisfy `k <= k_max`
+- `k_max`: largest neighborhood size configured on `CoreSGClusterer`; this is the reference value that defines what smaller `k` values can later be extracted
+- `k`: neighborhood size passed to `fit(X, k=...)`; it must satisfy `2 <= k <= k_max`
 - `metric`: distance metric used to build the support graph
 - `p`: metric power parameter for distance families such as Minkowski
-- `algorithm`: choose `"core-sg"` for the exact workflow or `"score-sg"` for the approximate anti-hub reinforced variant
+- `algorithm`: choose `"core-sg"` for the default exact workflow or `"score-sg"` for the approximate anti-hub reinforced variant
 - `no_noise`: when `True`, applies an optional post-processing step so final labels do not remain at `-1`
 - `noise_label_strategy`: selects the post-processing strategy used when `no_noise=True`
-- `c`: controls the top-`c` path signature used by the current noise reassignment strategy during hierarchy extraction
+
+### Algorithms
+
+`algorithm="core-sg"` is the default exact path. It builds dense pairwise
+distance information internally, constructs reusable support at `k_max`, and
+is the recommended first choice when the exact graph construction cost is
+acceptable.
+
+`algorithm="score-sg"` is the approximate path. It uses PyNNDescent for
+approximate neighbor discovery, selects anti-hubs by directed in-degree, and
+uses `random_state` plus `approx_knn_kwargs` to control reproducibility and
+approximate-neighbor behavior. It can be useful when dense all-pairs distance
+construction is too expensive, but the resulting support graph may be
+disconnected for some data and parameter settings.
 
 ### Using the approximate variant
 
@@ -201,39 +197,36 @@ To enable the approximate anti-hub reinforced variant, set
 `algorithm="score-sg"`:
 
 ```python
-core = CoreSG(
+clusterer = CoreSGClusterer(
+    k_max=15,
     metric="euclidean",
     p=2,
     algorithm="score-sg",
     random_state=42,
 )
-core.fit(X, k_max=15)
+clusterer.fit(X, k=10)
 ```
 
 ### Extracting only an MST
 
-Use `extract_mst_from_core_sg(...)` when you want the minimum spanning tree for
-a given `k` without reconstructing the full hierarchy:
+The estimator exposes the current HDBSCAN-style MST wrapper after `fit(...)`:
 
 ```python
-# Raw MST as a NumPy array.
-mst = core.extract_mst_from_core_sg(k=10)
-
-# The same MST converted to a pandas DataFrame.
-mst_df = core.extract_mst_from_core_sg(k=10, toDF=True)
+clusterer.fit(X, k=10)
+mst = clusterer.minimum_spanning_tree_
 ```
 
 ### Extracting hierarchy outputs
 
-Use `extract_hierarchy_from_core_sg(...)` when you want clustering outputs and
-tree artifacts similar to HDBSCAN:
+Call `fit(X, k=...)` when you want clustering outputs and tree artifacts
+similar to HDBSCAN:
 
 ```python
-core.extract_hierarchy_from_core_sg(k=10)
+clusterer.fit(X, k=10)
 
-labels = core.labels_
-probabilities = core.probabilities_
-cluster_persistence = core.cluster_persistence_
+labels = clusterer.labels_
+probabilities = clusterer.probabilities_
+cluster_persistence = clusterer.cluster_persistence_
 ```
 
 After hierarchy extraction, the current instance also exposes:
@@ -251,16 +244,16 @@ strategy, `noise_label_strategy="mst_label_propagation"`, updates only
 artifacts unchanged.
 
 ```python
-core = CoreSG(
+clusterer = CoreSGClusterer(
+    k_max=15,
     metric="euclidean",
     p=2,
     no_noise=True,
     noise_label_strategy="mst_label_propagation",
 )
 
-core.fit(X, k_max=15)
-core.extract_hierarchy_from_core_sg(k=10, c=5)
-labels = core.labels_
+clusterer.fit(X, k=10)
+labels = clusterer.labels_
 ```
 
 This is useful when you want a final label assignment for every point, while
@@ -279,18 +272,18 @@ label-propagation view discussed in:
 If you need direct access to the current extracted hierarchy objects:
 
 ```python
-condensed_tree = core.condensed_tree_
-single_linkage_tree = core.single_linkage_tree_
-minimum_spanning_tree = core.minimum_spanning_tree_
+condensed_tree = clusterer.condensed_tree_
+single_linkage_tree = clusterer.single_linkage_tree_
+minimum_spanning_tree = clusterer.minimum_spanning_tree_
 ```
 
 ### Accessing artifacts stored at `k_max`
 
-Core-SG also keeps the HDBSCAN-style artifacts computed at fit time for the
-reference `k_max`:
+The estimator keeps the internal reusable object at `clusterer.core_sg_` for
+advanced inspection. Most users can stay on the estimator attributes above.
 
 ```python
-fitted = core.get_fitted_hdbscan_objects(wrapped=True)
+fitted = clusterer.core_sg_.get_fitted_hdbscan_objects(wrapped=True)
 ```
 
 Returned keys:
@@ -331,7 +324,7 @@ Core-SG supports Python `>=3.10`.
 
 ## Help and support
 
-- Documentation and project overview: https://github.com/midas-core-sg/core-sg#readme
+- Documentation and project overview: https://midas-core-sg.github.io/core-sg/
 - Issues: https://github.com/midas-core-sg/core-sg/issues
 
 ## Contributing
