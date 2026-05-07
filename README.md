@@ -81,6 +81,69 @@ In practice:
 - use `extract_mst_from_core_sg(k=...)` when you want only the MST
 - use `extract_hierarchy_from_core_sg(k=...)` when you want HDBSCAN-style outputs such as `labels_` and tree artifacts
 
+### Scikit-learn-style wrapper
+
+For estimator-style workflows, use `CoreSGClusterer`:
+
+```python
+from sklearn.datasets import make_blobs
+from core_sg import CoreSGClusterer
+
+X, _ = make_blobs(
+    n_samples=1000,
+    n_features=10,
+    centers=10,
+    random_state=42,
+)
+
+clusterer = CoreSGClusterer(k_max=15)
+clusterer.fit(X, k=10)
+
+labels = clusterer.labels_
+```
+
+In this API, `k_max` is a constructor parameter because it defines the reusable
+support graph capacity and is visible through `get_params()` / `set_params()`.
+The first `fit(X, y=None, *, k=...)` builds the native `CoreSG` object once with
+`CoreSG.fit(X, k_max=k_max)`. Later calls to `fit(...)` reuse `core_sg_` and
+only run `extract_hierarchy_from_core_sg(k)`. The decision to build or extract
+is based on whether `core_sg_` already exists, not on whether `k == k_max`.
+
+The `k` argument defines the specific clustering extraction exposed by
+`labels_` and the other fitted attributes. If `k=None`, `fit` uses the fitted
+`k_max_`.
+
+```python
+clusterer.fit(X, k=10)
+labels_10 = clusterer.labels_
+
+clusterer.fit(X, k=8)  # reuses the same core_sg_ object
+labels_8 = clusterer.labels_
+```
+
+`CoreSGClusterer` exposes fitted artifacts for the selected `k`:
+
+- `labels_`
+- `probabilities_`
+- `cluster_persistence_`
+- `condensed_tree_`
+- `single_linkage_tree_`
+- `minimum_spanning_tree_`
+- `k_`
+- `k_max_`
+- `core_sg_`
+
+`fit_predict(X, y=None, *, k=...)` is also available and returns `labels_`.
+`predict(...)` is intentionally not implemented yet because Core-SG does not
+currently define assignment semantics for unseen samples.
+
+Use `CoreSG` directly when you want the native graph API. Use `CoreSGClusterer`
+when you want a scikit-learn-style estimator interface that still preserves
+Core-SG's reusable multi-`k` behavior. The native object remains available
+through `clusterer.core_sg_`.
+
+More details are available in [`doc/estimators.md`](doc/estimators.md).
+
 ### Quick workflow
 
 The most common usage pattern is:

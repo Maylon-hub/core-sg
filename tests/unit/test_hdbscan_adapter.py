@@ -80,6 +80,49 @@ class TestHDBSCANAdapter:
         assert np.array_equal(slt, single_linkage_tree)
         assert np.array_equal(mst, min_spanning_tree)
 
+    def test_tree_to_labels_filters_kwargs_unsupported_by_installed_hdbscan(
+        self, hdbscan_adapter_module, monkeypatch
+    ):
+        seen = {}
+
+        def fake_tree_to_labels(
+            data,
+            single_linkage_tree,
+            cluster_selection_method="eom",
+        ):
+            seen["kwargs"] = {
+                "cluster_selection_method": cluster_selection_method,
+            }
+            n = data.shape[0]
+            return (
+                np.zeros(n, dtype=np.int64),
+                np.ones(n, dtype=np.float64),
+                np.array([1.0]),
+                np.zeros((n, 4), dtype=np.float64),
+                single_linkage_tree,
+            )
+
+        monkeypatch.setattr(
+            hdbscan_adapter_module, "_tree_to_labels", fake_tree_to_labels
+        )
+
+        data = np.zeros((4, 2), dtype=np.float64)
+        single_linkage_tree = np.array(
+            [[0, 1, 1.0], [1, 2, 2.0], [2, 3, 3.0]], dtype=np.float64
+        )
+
+        hdbscan_adapter_module.tree_to_labels(
+            data,
+            single_linkage_tree,
+            tree_kwargs={
+                "cluster_selection_method": "leaf",
+                "cluster_selection_persistence": 0.0,
+            },
+            min_spanning_tree=single_linkage_tree,
+        )
+
+        assert seen["kwargs"] == {"cluster_selection_method": "leaf"}
+
     def test_wrapper_functions_return_hdbscan_style_wrappers(
         self, hdbscan_adapter_module
     ):
