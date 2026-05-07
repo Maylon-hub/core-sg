@@ -50,14 +50,12 @@ def filter_tree_to_labels_kwargs(tree_kwargs: dict[str, Any]) -> dict[str, Any]:
     only what the installed version can consume.
     """
     parameters = signature(_tree_to_labels).parameters
-    if any(parameter.kind == Parameter.VAR_KEYWORD for parameter in parameters.values()):
+    if any(
+        parameter.kind == Parameter.VAR_KEYWORD for parameter in parameters.values()
+    ):
         return dict(tree_kwargs)
 
-    return {
-        key: value
-        for key, value in tree_kwargs.items()
-        if key in parameters
-    }
+    return {key: value for key, value in tree_kwargs.items() if key in parameters}
 
 
 def tree_to_labels(

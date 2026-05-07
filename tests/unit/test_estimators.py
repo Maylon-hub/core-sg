@@ -74,7 +74,9 @@ class TestCoreSGClusterer:
         assert clusterer.core_sg_ is FakeCoreSG.instances[0]
         assert np.array_equal(clusterer.labels_, np.arange(sample_X.shape[0]) + 300)
         assert np.array_equal(clusterer.labels_, clusterer.core_sg_.labels_)
-        assert np.array_equal(clusterer.probabilities_, clusterer.core_sg_.probabilities_)
+        assert np.array_equal(
+            clusterer.probabilities_, clusterer.core_sg_.probabilities_
+        )
         assert np.array_equal(
             clusterer.cluster_persistence_, clusterer.core_sg_.cluster_persistence_
         )
@@ -242,7 +244,9 @@ class TestCoreSGClusterer:
         with pytest.raises(ValueError, match="k"):
             clusterer.fit(sample_X, k=k)
 
-    def test_precomputed_metric_is_rejected_in_wrapper(self, estimators_module, sample_X):
+    def test_precomputed_metric_is_rejected_in_wrapper(
+        self, estimators_module, sample_X
+    ):
         clusterer = estimators_module.CoreSGClusterer(k_max=4, metric="precomputed")
 
         with pytest.raises(ValueError, match="precomputed"):
