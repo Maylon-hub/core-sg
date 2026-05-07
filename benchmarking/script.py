@@ -5,13 +5,18 @@ import csv
 import logging
 import re
 import statistics
+import sys
 from pathlib import Path
 from time import perf_counter
 
 import hdbscan
 from sklearn.datasets import make_blobs
 
-from core_sg import CoreSG
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from core_sg import CoreSGClusterer  # noqa: E402
 
 LOGGER = logging.getLogger("benchmarking.script")
 
@@ -203,7 +208,8 @@ def run_core_sg_variant(
     n_clusters_by_k: dict[int, int] = {}
 
     for repetition in range(1, repetitions + 1):
-        core = CoreSG(
+        clusterer = CoreSGClusterer(
+            k_max=k_max,
             metric="euclidean",
             p=2,
             verbose=0,
@@ -212,9 +218,10 @@ def run_core_sg_variant(
         )
 
         fit_start = perf_counter()
-        core.fit(X, k_max=k_max)
+        clusterer.fit(X, k=k_max)
         fit_elapsed = perf_counter() - fit_start
         fit_samples.append(fit_elapsed)
+        core = clusterer.core_sg_
         LOGGER.info(
             "Finished %s | fit repetition=%s/%s | fit=%.6fs",
             method_name,

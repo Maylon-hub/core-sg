@@ -9,6 +9,7 @@ HDBSCAN BSD-3-Clause attribution.
 
 from __future__ import annotations
 
+from inspect import Parameter, signature
 from typing import Any
 
 import hdbscan
@@ -40,6 +41,25 @@ def mst_to_single_linkage_tree(min_spanning_tree: np.ndarray) -> np.ndarray:
     return label(min_spanning_tree)
 
 
+def filter_tree_to_labels_kwargs(tree_kwargs: dict[str, Any]) -> dict[str, Any]:
+    """
+    Keep only keyword arguments supported by the installed HDBSCAN private API.
+
+    HDBSCAN's private `_tree_to_labels(...)` signature varies across releases.
+    Core-SG accepts a stable public parameter set, but this adapter must forward
+    only what the installed version can consume.
+    """
+    parameters = signature(_tree_to_labels).parameters
+    if any(parameter.kind == Parameter.VAR_KEYWORD for parameter in parameters.values()):
+        return dict(tree_kwargs)
+
+    return {
+        key: value
+        for key, value in tree_kwargs.items()
+        if key in parameters
+    }
+
+
 def tree_to_labels(
     data: np.ndarray,
     single_linkage_tree: np.ndarray,
@@ -47,7 +67,8 @@ def tree_to_labels(
     tree_kwargs: dict[str, Any],
     min_spanning_tree: np.ndarray,
 ) -> tuple[Any, ...]:
-    return _tree_to_labels(data, single_linkage_tree, **tree_kwargs) + (
+    filtered_kwargs = filter_tree_to_labels_kwargs(tree_kwargs)
+    return _tree_to_labels(data, single_linkage_tree, **filtered_kwargs) + (
         min_spanning_tree,
     )
 

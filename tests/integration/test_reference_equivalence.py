@@ -6,7 +6,7 @@ import pytest
 hdbscan = pytest.importorskip("hdbscan")
 from sklearn.datasets import make_blobs
 
-from core_sg import CoreSG
+from core_sg import CoreSG, CoreSGClusterer
 from tests.helpers import (
     normalize_undirected_edges,
     validate_reference_edges_in_core,
@@ -92,9 +92,53 @@ class TestReferenceEquivalence:
 class TestIntegrationSmoke:
     def test_public_package_import_exposes_core_sg_class(self):
         from core_sg import CoreSG as ExportedCoreSG
+        from core_sg import CoreSGClusterer as ExportedCoreSGClusterer
 
         assert ExportedCoreSG.__name__ == CoreSG.__name__ == "CoreSG"
         assert ExportedCoreSG.__module__ == CoreSG.__module__ == "core_sg.core_sg"
+        assert (
+            ExportedCoreSGClusterer.__name__
+            == CoreSGClusterer.__name__
+            == "CoreSGClusterer"
+        )
+        assert (
+            ExportedCoreSGClusterer.__module__
+            == CoreSGClusterer.__module__
+            == "core_sg.estimators"
+        )
+
+    def test_core_sg_clusterer_fit_exposes_selected_k_outputs(self, dataset):
+        clusterer = CoreSGClusterer(
+            k_max=6,
+            metric="euclidean",
+            p=2,
+            verbose=0,
+            no_noise=False,
+            match_reference_implementation=True,
+        )
+
+        returned = clusterer.fit(dataset, k=4)
+
+        assert returned is clusterer
+        assert clusterer.k_max_ == 6
+        assert clusterer.k_ == 4
+        assert clusterer.core_sg_.k_max_ == 6
+        core_sg = clusterer.core_sg_
+        assert np.array_equal(clusterer.labels_, clusterer.core_sg_.labels_)
+        assert clusterer.condensed_tree_.to_pandas().shape[0] >= dataset.shape[0]
+        assert clusterer.single_linkage_tree_.to_pandas().shape[0] == (
+            dataset.shape[0] - 1
+        )
+        assert clusterer.minimum_spanning_tree_.to_pandas().shape[0] == (
+            dataset.shape[0] - 1
+        )
+
+        labels = clusterer.fit_predict(dataset, k=2)
+
+        assert clusterer.core_sg_ is core_sg
+        assert clusterer.k_max_ == 6
+        assert clusterer.k_ == 2
+        assert np.array_equal(labels, clusterer.labels_)
 
     def test_full_fit_extract_hierarchy_and_wrapped_accessors_with_real_hdbscan(
         self, dataset
