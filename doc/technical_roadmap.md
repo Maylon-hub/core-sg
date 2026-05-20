@@ -72,6 +72,8 @@ Core-SG is intentionally focused. It should be understood as a **companion proje
 Current limitations include:
 
 - the main value comes from **multi-`k` reuse**, not necessarily from a single fit
+- the exact `algorithm="core-sg"` path has a practical `n_samples` limitation because it relies on dense pairwise distance information
+- `algorithm="score-sg"` is the scalable approximate path intended to relieve that dense construction bottleneck when sample size becomes the limiting factor
 - the project still relies on `hdbscan` for important parts of the hierarchy post-processing pipeline
 - users still need to understand the role of `k` in the workflow to interpret results correctly
 - performance gains depend on the workload pattern; they are strongest when the same fitted support is reused many times
@@ -117,6 +119,8 @@ The current stable scope of Core-SG is centered on the following capabilities:
 
 ### 2.1 Reusable support construction
 Core-SG builds a reusable support structure using a reference value `k_max`, allowing subsequent extractions for smaller `k` values without repeating the full pipeline.
+
+The exact construction path uses dense pairwise distance information and is therefore bounded in practice by `n_samples`. The ScoreSG path extends the same reuse idea with approximate sparse-neighbor construction, making it the preferred path when the exact dense construction no longer fits the target scale.
 
 ### 2.2 MST extraction for smaller `k`
 Once fitted, Core-SG can extract minimum spanning tree information for smaller values of `k`, which is especially useful in benchmarking, diagnostics, and repeated comparative analysis.
@@ -204,7 +208,12 @@ Any performance benefit should be understood as **scenario-dependent**, especial
 
 The project should not be described as universally faster in all clustering settings.
 
-### 6.4 Narrower scope than a full clustering framework
+### 6.4 Exact CoreSG has a sample-size limitation
+The traditional exact `algorithm="core-sg"` path builds dense pairwise distance information. This is useful for reference-style construction, but it creates a practical `n_samples` limitation in runtime and memory.
+
+The current mitigation is `algorithm="score-sg"`, which avoids dense all-pairs construction by using approximate sparse-neighbor support. ScoreSG should be treated as the scalable option for larger repeated multi-`k` workflows, subject to the usual approximate-neighbor caveats around connectivity, reproducibility, and output validation.
+
+### 6.5 Narrower scope than a full clustering framework
 Core-SG is intentionally focused on graph support reuse and MST-centered workflows. Users looking for a broad, general clustering toolkit may find the scope narrower than expected.
 
 ## 7. Recommended usage today
@@ -215,6 +224,7 @@ Core-SG is currently most appropriate when:
 - MST artifacts are needed for inspection, diagnostics, or downstream use
 - users want to keep an HDBSCAN-like workflow while avoiding repeated full recomputation
 - experiments, notebooks, or internal tools need graph-level artifacts rather than labels only
+- exact dense construction is feasible, or ScoreSG is acceptable as the scalable approximate path for larger `n_samples`
 
 ## 8. When stakeholders should be cautious
 
