@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import builtins
 import inspect
+import importlib
+import sys
+import warnings
 
 import numpy as np
 import pytest
@@ -16,6 +20,26 @@ from core_sg.reweight import (
 )
 
 pytestmark = pytest.mark.unit
+
+
+def _import_module_with_blocked_import(
+    module_name: str,
+    blocked_names: set[str],
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    real_import = builtins.__import__
+
+    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name in blocked_names or name.rsplit(".", 1)[-1] in blocked_names:
+            raise ImportError(f"blocked optional import: {name}")
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+    for name in list(sys.modules):
+        if name == "core_sg" or name.startswith("core_sg."):
+            del sys.modules[name]
+    return importlib.import_module(module_name)
 
 
 class TestGraphHelpers:
@@ -214,3 +238,121 @@ class TestGraphHelpers:
 
         with pytest.raises(ValueError, match="NxN"):
             core_sg_module.knn_from_precomputed(D, k=1)
+
+    def test_knn_from_precomputed_validates_k_with_and_without_self(
+        self, core_sg_module
+    ):
+        D = np.array([[0.0, 2.0], [2.0, 0.0]], dtype=np.float64)
+
+        with pytest.raises(ValueError, match="excluindo self"):
+            core_sg_module.knn_from_precomputed(D, k=0, include_self=False)
+        with pytest.raises(ValueError, match="incluindo self"):
+            core_sg_module.knn_from_precomputed(D, k=3, include_self=True)
+
+        idx, dist = core_sg_module.knn_from_precomputed(D, k=2, include_self=True)
+
+        assert np.array_equal(idx[:, 0], np.array([0, 1], dtype=np.int64))
+        assert np.array_equal(dist[:, 0], np.array([0.0, 0.0]))
+
+    def test_build_knng_vectors_validates_input_shapes(self, core_sg_module):
+        idxs = np.array([[1, 0]], dtype=np.int64)
+        dists = np.array([[1.0, 1.0]], dtype=np.float64)
+
+        with pytest.raises(ValueError, match="idxs_arr.shape"):
+            core_sg_module.build_knng_vectors(idxs, dists, knng_size=2, k_max=1)
+
+        with pytest.raises(ValueError, match="distance_arr.shape"):
+            core_sg_module.build_knng_vectors(
+                np.array([[1], [0]], dtype=np.int64),
+                dists,
+                knng_size=2,
+                k_max=1,
+            )
+
+    def test_add_mst_edges_validates_shapes_and_returns_original_when_all_exist(
+        self, core_sg_module
+    ):
+        with pytest.raises(ValueError, match="metric_edges"):
+            core_sg_module.add_mst_edges_to_metric_edges(
+                np.array([1.0, 2.0]), np.array([[0.0, 1.0, 1.0]])
+            )
+
+        with pytest.raises(ValueError, match="mst"):
+            core_sg_module.add_mst_edges_to_metric_edges(
+                np.array([[1.0, 0.0, 1.0]]), np.array([0.0, 1.0, 1.0])
+            )
+
+        metric_edges = np.array([[1.0, 0.0, 1.0]], dtype=np.float64)
+        mst = np.array([[0.0, 1.0, 1.0]], dtype=np.float64)
+
+        result = core_sg_module.add_mst_edges_to_metric_edges(metric_edges, mst)
+
+        assert np.array_equal(result, metric_edges)
+
+    def test_kruskal_python_fallback_and_union_rank_branches(
+        self, fake_hdbscan_modules, monkeypatch
+    ):
+        del fake_hdbscan_modules
+        module = _import_module_with_blocked_import(
+            "core_sg.mst_kruskal",
+            {"_mst_kruskal"},
+            monkeypatch=monkeypatch,
+        )
+        assert module._kruskal_mst_impl is None
+
+        edges = np.array([[0.0, 1.0, 1.0], [1.0, 2.0, 2.0]], dtype=np.float64)
+        with pytest.warns(RuntimeWarning, match="Cython backend"):
+            module.kruskal_mst(edges, n_nodes=3)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            module.kruskal_mst(edges, n_nodes=3)
+
+        uf = module.UnionFind(3)
+        assert uf.union(0, 1) is True
+        assert uf.union(2, 0) is True
+        assert uf.find(2) == uf.find(0)
+
+        with pytest.raises(ValueError, match="shape"):
+            module.kruskal_mst(np.array([1.0, 2.0, 3.0]), n_nodes=3)
+        with pytest.raises(ValueError, match="n_nodes"):
+            module.kruskal_mst(edges, n_nodes=1)
+        with pytest.raises(ValueError, match="Disconex Graph"):
+            module._kruskal_mst_python(np.array([[0.0, 1.0, 1.0]]), n_nodes=3)
+
+    def test_reweight_python_fallback_validation_and_cache_miss(
+        self, fake_hdbscan_modules, monkeypatch
+    ):
+        del fake_hdbscan_modules
+        module = _import_module_with_blocked_import(
+            "core_sg.reweight",
+            {"_reweight"},
+            monkeypatch=monkeypatch,
+        )
+        assert module._reweight_core_sg_from_lookup is None
+
+        with pytest.raises(ValueError, match="mst"):
+            module.sort_core_sg(np.array([1.0, 2.0, 3.0]))
+
+        w_sorted = np.array([1.0], dtype=np.float64)
+        with pytest.raises(KeyError, match="missing"):
+            module._reweight_core_sg_python(
+                np.array([[0.0, 1.0, -1.0]]),
+                np.ones(3, dtype=np.float64),
+                np.array([4], dtype=np.int64),
+                w_sorted,
+                n_nodes=3,
+            )
+
+        core_sg = np.array([[0.0, 1.0, -1.0]], dtype=np.float64)
+        metric_edges = np.array([[1.0, 0.0, 1.0]], dtype=np.float64)
+        core_k = np.array([0.5, 0.7], dtype=np.float64)
+        with pytest.warns(RuntimeWarning, match="Cython backend"):
+            module.reweight_core_sg_mutual_reachability(
+                core_sg, core_k, metric_edges, n_nodes=2
+            )
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            module.reweight_core_sg_mutual_reachability(
+                core_sg, core_k, metric_edges, n_nodes=2
+            )
