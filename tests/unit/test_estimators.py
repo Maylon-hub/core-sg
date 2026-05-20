@@ -154,6 +154,21 @@ class TestCoreSGClusterer:
         assert np.array_equal(labels, clusterer.labels_)
         assert clusterer.k_ == 2
 
+    def test_fit_predict_after_fit_reuses_existing_core_sg(
+        self, estimators_module, sample_X
+    ):
+        clusterer = estimators_module.CoreSGClusterer(k_max=4)
+        clusterer.fit(sample_X, k=3)
+        core_sg = clusterer.core_sg_
+
+        labels = clusterer.fit_predict(sample_X.copy(), k=2)
+
+        assert clusterer.core_sg_ is core_sg
+        assert FakeCoreSG.instances == [core_sg]
+        assert len(core_sg.fit_calls) == 1
+        assert core_sg.extract_calls == [3, 2]
+        assert np.array_equal(labels, clusterer.labels_)
+
     def test_constructor_parameters_are_forwarded_without_mutating_dict(
         self, estimators_module, sample_X
     ):
@@ -217,6 +232,36 @@ class TestCoreSGClusterer:
         assert not hasattr(cloned, "core_sg_")
         assert not hasattr(cloned, "labels_")
 
+    def test_clone_fitted_clusterer_drops_learned_attributes(
+        self, estimators_module, sample_X
+    ):
+        clusterer = estimators_module.CoreSGClusterer(k_max=4)
+        clusterer.fit(sample_X, k=3)
+
+        cloned = clone(clusterer)
+
+        assert cloned.get_params() == clusterer.get_params()
+        for attribute in [
+            "core_sg_",
+            "k_max_",
+            "k_",
+            "labels_",
+            "probabilities_",
+            "cluster_persistence_",
+            "condensed_tree_",
+            "single_linkage_tree_",
+            "minimum_spanning_tree_",
+        ]:
+            assert not hasattr(cloned, attribute)
+
+    def test_get_fitted_core_sg_returns_native_object(
+        self, estimators_module, sample_X
+    ):
+        clusterer = estimators_module.CoreSGClusterer(k_max=4)
+        clusterer.fit(sample_X, k=3)
+
+        assert clusterer.get_fitted_core_sg() is clusterer.core_sg_
+
     def test_get_fitted_core_sg_raises_before_fit(self, estimators_module):
         clusterer = estimators_module.CoreSGClusterer(k_max=4)
 
@@ -226,7 +271,7 @@ class TestCoreSGClusterer:
         with pytest.raises(AttributeError):
             _ = clusterer.labels_
 
-    @pytest.mark.parametrize("k_max", [1, 6, 1.5, True])
+    @pytest.mark.parametrize("k_max", [1, 0, -1, 6, 1.5, True])
     def test_invalid_k_max_values_raise_clear_value_error(
         self, estimators_module, sample_X, k_max
     ):
@@ -235,7 +280,7 @@ class TestCoreSGClusterer:
         with pytest.raises(ValueError, match="k_max"):
             clusterer.fit(sample_X)
 
-    @pytest.mark.parametrize("k", [1, 5, 2.5, False])
+    @pytest.mark.parametrize("k", [1, 0, -1, 5, 2.5, True, False])
     def test_invalid_k_values_raise_clear_value_error(
         self, estimators_module, sample_X, k
     ):
@@ -244,6 +289,47 @@ class TestCoreSGClusterer:
         with pytest.raises(ValueError, match="k"):
             clusterer.fit(sample_X, k=k)
 
+    @pytest.mark.parametrize(
+        "bad_X",
+        [
+            np.array([0.0, 1.0, 2.0], dtype=np.float64),
+            np.empty((0, 2), dtype=np.float64),
+            np.array([[0.0, 1.0]], dtype=np.float64),
+            np.array([[0.0, 1.0], [np.nan, 2.0], [3.0, 4.0]], dtype=np.float64),
+            np.array([[0.0, 1.0], [np.inf, 2.0], [3.0, 4.0]], dtype=np.float64),
+        ],
+    )
+    def test_first_fit_rejects_invalid_dense_X(self, estimators_module, bad_X):
+        clusterer = estimators_module.CoreSGClusterer(k_max=2)
+
+        with pytest.raises(ValueError):
+            clusterer.fit(bad_X)
+
+    def test_first_fit_rejects_sparse_X(self, estimators_module, sample_X):
+        sparse = pytest.importorskip("scipy.sparse")
+        clusterer = estimators_module.CoreSGClusterer(k_max=4)
+
+        with pytest.raises(TypeError):
+            clusterer.fit(sparse.csr_matrix(sample_X))
+
+    def test_later_fit_skips_X_validation_but_still_validates_k(
+        self, estimators_module, sample_X
+    ):
+        clusterer = estimators_module.CoreSGClusterer(k_max=4)
+        clusterer.fit(sample_X, k=3)
+        core_sg = clusterer.core_sg_
+        invalid_X = np.array([np.nan], dtype=np.float64)
+
+        clusterer.fit(invalid_X, k=None)
+
+        assert clusterer.core_sg_ is core_sg
+        assert len(core_sg.fit_calls) == 1
+        assert core_sg.extract_calls == [3, 4]
+        assert clusterer.k_ == clusterer.k_max_ == 4
+
+        with pytest.raises(ValueError, match="k"):
+            clusterer.fit(invalid_X, k=5)
+
     def test_precomputed_metric_is_rejected_in_wrapper(
         self, estimators_module, sample_X
     ):
@@ -251,3 +337,14 @@ class TestCoreSGClusterer:
 
         with pytest.raises(ValueError, match="precomputed"):
             clusterer.fit(sample_X)
+
+    def test_validate_x_falls_back_when_validate_data_is_unavailable(
+        self, estimators_module, monkeypatch
+    ):
+        monkeypatch.setattr(estimators_module, "validate_data", None)
+        clusterer = estimators_module.CoreSGClusterer(k_max=2)
+
+        X_checked = clusterer._validate_X([[0.0, 1.0], [1.0, 0.0]])
+
+        assert X_checked.dtype == np.float64
+        assert clusterer.n_features_in_ == 2

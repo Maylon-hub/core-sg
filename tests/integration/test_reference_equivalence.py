@@ -36,6 +36,42 @@ def _reference_mst(D: np.ndarray, k: int) -> np.ndarray:
     return mst[np.argsort(mst[:, 2], kind="mergesort")]
 
 
+def _assert_clusterer_matches_native_core(
+    clusterer: CoreSGClusterer, core: CoreSG, requested_k: int
+):
+    assert np.array_equal(clusterer.labels_, core.labels_)
+    assert np.allclose(clusterer.probabilities_, core.probabilities_)
+    assert np.allclose(clusterer.cluster_persistence_, core.cluster_persistence_)
+    assert np.allclose(
+        clusterer.core_sg_._min_spanning_tree_array_,
+        core._min_spanning_tree_array_,
+    )
+    assert np.allclose(
+        clusterer.core_sg_._single_linkage_tree_array_,
+        core._single_linkage_tree_array_,
+    )
+    assert np.array_equal(
+        clusterer.core_sg_._condensed_tree_array_,
+        core._condensed_tree_array_,
+    )
+    assert clusterer.k_ == requested_k
+    assert clusterer.k_max_ == core.k_max_
+    assert clusterer.core_sg_.k_max_ == core.k_max_
+
+
+def _assert_smoke_artifacts(core: CoreSG, X: np.ndarray, *, k_max: int):
+    assert core.n_samples_ == X.shape[0]
+    assert core.k_max_ == k_max
+    assert core.labels_ is not None
+    assert core.labels_.shape == (X.shape[0],)
+    assert core.probabilities_ is not None
+    assert core.probabilities_.shape == (X.shape[0],)
+    assert core.cluster_persistence_ is not None
+    assert core.condensed_tree_.to_pandas().shape[0] >= X.shape[0]
+    assert core.single_linkage_tree_.to_pandas().shape[0] == X.shape[0] - 1
+    assert core.minimum_spanning_tree_.to_pandas().shape[0] == X.shape[0] - 1
+
+
 class TestReferenceEquivalence:
     @pytest.mark.parametrize("k", [6, 4, 2])
     def test_reference_mst_edges_are_contained_in_core_sg(self, dataset, k):
@@ -140,6 +176,68 @@ class TestIntegrationSmoke:
         assert clusterer.k_ == 2
         assert np.array_equal(labels, clusterer.labels_)
 
+    @pytest.mark.parametrize("k", [6, 4, None])
+    def test_core_sg_clusterer_outputs_match_native_core_sg(self, dataset, k):
+        k_max = 6
+        requested_k = k_max if k is None else k
+        clusterer = CoreSGClusterer(
+            k_max=k_max,
+            metric="euclidean",
+            p=2,
+            verbose=0,
+            no_noise=False,
+            match_reference_implementation=True,
+        )
+        core = CoreSG(
+            metric="euclidean",
+            p=2,
+            verbose=0,
+            no_noise=False,
+            match_reference_implementation=True,
+        )
+
+        clusterer.fit(dataset, k=k)
+        core.fit(dataset, k_max=k_max)
+        core.extract_hierarchy_from_core_sg(requested_k)
+
+        _assert_clusterer_matches_native_core(clusterer, core, requested_k)
+
+    def test_repeated_core_sg_clusterer_fit_matches_native_for_each_k(self, dataset):
+        clusterer = CoreSGClusterer(
+            k_max=6,
+            metric="euclidean",
+            p=2,
+            verbose=0,
+            no_noise=False,
+            match_reference_implementation=True,
+        )
+
+        clusterer.fit(dataset, k=6)
+        core_sg = clusterer.core_sg_
+        labels_k_max = clusterer.labels_.copy()
+        clusterer.fit(dataset, k=4)
+        labels_k4 = clusterer.labels_.copy()
+        labels_from_fit_predict = clusterer.fit_predict(dataset, k=2)
+
+        assert clusterer.core_sg_ is core_sg
+        assert np.array_equal(labels_from_fit_predict, clusterer.labels_)
+
+        for requested_k, observed_labels in [
+            (6, labels_k_max),
+            (4, labels_k4),
+            (2, labels_from_fit_predict),
+        ]:
+            core = CoreSG(
+                metric="euclidean",
+                p=2,
+                verbose=0,
+                no_noise=False,
+                match_reference_implementation=True,
+            )
+            core.fit(dataset, k_max=6)
+            core.extract_hierarchy_from_core_sg(requested_k)
+            assert np.array_equal(observed_labels, core.labels_)
+
     def test_full_fit_extract_hierarchy_and_wrapped_accessors_with_real_hdbscan(
         self, dataset
     ):
@@ -155,6 +253,41 @@ class TestIntegrationSmoke:
         assert core.condensed_tree_.to_pandas().shape[0] >= core.n_samples_
         assert core.single_linkage_tree_.to_pandas().shape[0] == core.n_samples_ - 1
         assert core.minimum_spanning_tree_.to_pandas().shape[0] == core.n_samples_ - 1
+
+    def test_core_sg_smoke_runs_two_instances_with_different_parameters(self, dataset):
+        first = CoreSG(
+            metric="euclidean",
+            p=2,
+            verbose=0,
+            no_noise=False,
+            match_reference_implementation=True,
+        )
+        second = CoreSG(
+            metric="manhattan",
+            p=2,
+            verbose=0,
+            no_noise=False,
+            cluster_selection_method="leaf",
+            allow_single_cluster=True,
+            match_reference_implementation=True,
+        )
+
+        first.fit(dataset, k_max=6)
+        first.extract_hierarchy_from_core_sg(4)
+        second.fit(dataset, k_max=5)
+        second.extract_hierarchy_from_core_sg(3)
+
+        _assert_smoke_artifacts(first, dataset, k_max=6)
+        _assert_smoke_artifacts(second, dataset, k_max=5)
+        assert first is not second
+        assert first.metric == "euclidean"
+        assert second.metric == "manhattan"
+        assert first._raw_data_ is dataset
+        assert second._raw_data_ is dataset
+        assert not np.array_equal(
+            first._min_spanning_tree_array_,
+            second._min_spanning_tree_array_,
+        )
 
     def test_score_sg_fit_extract_hierarchy_and_wrapped_accessors(self, dataset):
         connected_dataset, _ = make_blobs(
@@ -192,6 +325,53 @@ class TestIntegrationSmoke:
         assert core.condensed_tree_.to_pandas().shape[0] >= core.n_samples_
         assert core.single_linkage_tree_.to_pandas().shape[0] == core.n_samples_ - 1
         assert core.minimum_spanning_tree_.to_pandas().shape[0] == core.n_samples_ - 1
+
+    def test_score_sg_smoke_runs_two_instances_with_different_parameters(self):
+        connected_dataset, _ = make_blobs(
+            n_samples=40,
+            n_features=3,
+            centers=1,
+            cluster_std=0.75,
+            random_state=123,
+        )
+        first = CoreSG(
+            metric="euclidean",
+            p=2,
+            algorithm="score-sg",
+            random_state=42,
+            verbose=0,
+            no_noise=False,
+            match_reference_implementation=True,
+        )
+        second = CoreSG(
+            metric="euclidean",
+            p=2,
+            algorithm="score-sg",
+            random_state=7,
+            approx_knn_kwargs={"n_trees": 8},
+            verbose=0,
+            no_noise=False,
+            cluster_selection_method="leaf",
+            allow_single_cluster=True,
+            match_reference_implementation=True,
+        )
+
+        first.fit(connected_dataset, k_max=6)
+        first.extract_hierarchy_from_core_sg(4)
+        second.fit(connected_dataset, k_max=5)
+        second.extract_hierarchy_from_core_sg(3)
+
+        _assert_smoke_artifacts(first, connected_dataset, k_max=6)
+        _assert_smoke_artifacts(second, connected_dataset, k_max=5)
+        assert first is not second
+        assert first.algorithm == second.algorithm == "score-sg"
+        assert first.random_state == 42
+        assert second.random_state == 7
+        assert second.approx_knn_kwargs == {"n_trees": 8}
+        assert first.anti_hubs_.shape == (
+            int(np.floor(np.sqrt(connected_dataset.shape[0]))),
+        )
+        assert second.anti_hubs_.shape == first.anti_hubs_.shape
 
     def test_score_sg_fit_raises_explicitly_when_support_graph_is_disconnected(
         self, dataset

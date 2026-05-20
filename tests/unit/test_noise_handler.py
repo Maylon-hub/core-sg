@@ -155,3 +155,20 @@ class TestMSTLabelPropagationStrategy:
 
         with pytest.raises(ValueError, match="shape \\(n_edges, 3\\)"):
             handler.reassign(labels=labels, min_spanning_tree=mst, n_samples=3)
+
+    def test_reassign_validates_mst_edge_count(self, noise_handler_module):
+        labels = np.array([0, -1, 1], dtype=np.int64)
+        mst = np.array([[0.0, 1.0, 1.0]], dtype=np.float64)
+        handler = noise_handler_module.MSTLabelPropagationStrategy(c=2)
+
+        with pytest.raises(ValueError, match="n_samples - 1"):
+            handler.reassign(labels=labels, min_spanning_tree=mst, n_samples=3)
+
+    def test_reassign_skips_already_labeled_neighbors(self, noise_handler_module):
+        labels = np.array([0, 1, -1], dtype=np.int64)
+        mst = np.array([[0.0, 1.0, 1.0], [1.0, 2.0, 2.0]], dtype=np.float64)
+        handler = noise_handler_module.MSTLabelPropagationStrategy(c=2)
+
+        result = handler.reassign(labels=labels, min_spanning_tree=mst, n_samples=3)
+
+        assert np.array_equal(result, np.array([0, 1, 1], dtype=np.int64))

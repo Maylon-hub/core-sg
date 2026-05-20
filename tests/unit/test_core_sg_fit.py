@@ -91,6 +91,9 @@ class TestCoreSGFit:
         result = obj.extract_mst_from_core_sg(4)
 
         assert np.array_equal(result, obj._min_spanning_tree_k_max_array_)
+        assert isinstance(result, np.ndarray)
+        assert result.shape == (sample_X.shape[0] - 1, 3)
+        assert np.isfinite(result[:, 2]).all()
 
     def test_extract_mst_from_core_sg_to_dataframe_has_expected_schema(
         self, core_sg_module, patched_fit_dependencies, sample_X
@@ -104,6 +107,7 @@ class TestCoreSGFit:
         assert str(df["to"].dtype) == "int64"
         assert str(df["from"].dtype) == "int64"
         assert str(df["weight"].dtype) == "float64"
+        assert df.shape == (sample_X.shape[0] - 1, 3)
 
     def test_get_fitted_hdbscan_objects_raw_returns_saved_arrays(
         self, core_sg_module, patched_fit_dependencies, sample_X
@@ -125,6 +129,9 @@ class TestCoreSGFit:
         assert np.array_equal(
             fitted["minimum_spanning_tree_"], obj._min_spanning_tree_k_max_array_
         )
+        assert isinstance(fitted["condensed_tree_"], np.ndarray)
+        assert isinstance(fitted["single_linkage_tree_"], np.ndarray)
+        assert isinstance(fitted["minimum_spanning_tree_"], np.ndarray)
 
     def test_get_fitted_hdbscan_objects_wrapped_returns_hdbscan_like_wrappers(
         self, core_sg_module, patched_fit_dependencies, sample_X
@@ -139,6 +146,9 @@ class TestCoreSGFit:
         assert (
             fitted["minimum_spanning_tree_"].to_pandas().shape[0] == obj.n_samples_ - 1
         )
+        assert not isinstance(fitted["condensed_tree_"], np.ndarray)
+        assert not isinstance(fitted["single_linkage_tree_"], np.ndarray)
+        assert not isinstance(fitted["minimum_spanning_tree_"], np.ndarray)
 
     def test_minimum_spanning_tree_fit_wrapper_warns_without_raw_data(
         self, core_sg_module, patched_fit_dependencies, sample_X
@@ -232,6 +242,8 @@ class TestCoreSGFit:
             _ = obj.distance_matrix_
         assert np.array_equal(obj._tree_to_labels_data_, sample_X)
         assert np.array_equal(obj.anti_hubs_, np.array([0, 2], dtype=np.int64))
+        assert obj.anti_hubs_.shape == (int(np.floor(np.sqrt(sample_X.shape[0]))),)
+        assert np.issubdtype(obj.anti_hubs_.dtype, np.integer)
 
     def test_score_sg_fit_raises_for_disconnected_support_graph(
         self, core_sg_module, monkeypatch, sample_X

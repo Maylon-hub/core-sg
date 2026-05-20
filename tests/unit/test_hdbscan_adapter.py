@@ -15,6 +15,17 @@ def hdbscan_adapter_module(fake_hdbscan_modules):
 
 
 class TestHDBSCANAdapter:
+    @staticmethod
+    def _minimal_tree_to_labels_result(data, single_linkage_tree):
+        n = np.asarray(data).shape[0]
+        return (
+            np.zeros(n, dtype=np.int64),
+            np.ones(n, dtype=np.float64),
+            np.array([1.0], dtype=np.float64),
+            np.zeros((n, 4), dtype=np.float64),
+            np.asarray(single_linkage_tree),
+        )
+
     def test_reference_mst_original_distance_uses_expected_hdbscan_parameters(
         self, hdbscan_adapter_module
     ):
@@ -79,6 +90,190 @@ class TestHDBSCANAdapter:
         assert condensed.shape[0] == data.shape[0]
         assert np.array_equal(slt, single_linkage_tree)
         assert np.array_equal(mst, min_spanning_tree)
+
+    @pytest.mark.parametrize(
+        ("signature_name", "factory", "expected_kwargs"),
+        [
+            (
+                "current_full",
+                lambda seen, result: (
+                    lambda data, single_linkage_tree, cluster_selection_method="eom", allow_single_cluster=False, match_reference_implementation=False, cluster_selection_epsilon=0.0, cluster_selection_persistence=0.0, max_cluster_size=0, cluster_selection_epsilon_max=float("inf"): (
+                        seen.__setitem__(
+                            "kwargs",
+                            {
+                                "cluster_selection_method": cluster_selection_method,
+                                "allow_single_cluster": allow_single_cluster,
+                                "match_reference_implementation": (
+                                    match_reference_implementation
+                                ),
+                                "cluster_selection_epsilon": cluster_selection_epsilon,
+                                "cluster_selection_persistence": (
+                                    cluster_selection_persistence
+                                ),
+                                "max_cluster_size": max_cluster_size,
+                                "cluster_selection_epsilon_max": (
+                                    cluster_selection_epsilon_max
+                                ),
+                            },
+                        )
+                        or result(data, single_linkage_tree)
+                    )
+                ),
+                {
+                    "cluster_selection_method": "leaf",
+                    "allow_single_cluster": True,
+                    "match_reference_implementation": True,
+                    "cluster_selection_epsilon": 0.25,
+                    "cluster_selection_persistence": 0.4,
+                    "max_cluster_size": 7,
+                    "cluster_selection_epsilon_max": 3.5,
+                },
+            ),
+            (
+                "without_persistence",
+                lambda seen, result: (
+                    lambda data, single_linkage_tree, cluster_selection_method="eom", allow_single_cluster=False, match_reference_implementation=False, cluster_selection_epsilon=0.0, max_cluster_size=0, cluster_selection_epsilon_max=float("inf"): (
+                        seen.__setitem__(
+                            "kwargs",
+                            {
+                                "cluster_selection_method": cluster_selection_method,
+                                "allow_single_cluster": allow_single_cluster,
+                                "match_reference_implementation": (
+                                    match_reference_implementation
+                                ),
+                                "cluster_selection_epsilon": cluster_selection_epsilon,
+                                "max_cluster_size": max_cluster_size,
+                                "cluster_selection_epsilon_max": (
+                                    cluster_selection_epsilon_max
+                                ),
+                            },
+                        )
+                        or result(data, single_linkage_tree)
+                    )
+                ),
+                {
+                    "cluster_selection_method": "leaf",
+                    "allow_single_cluster": True,
+                    "match_reference_implementation": True,
+                    "cluster_selection_epsilon": 0.25,
+                    "max_cluster_size": 7,
+                    "cluster_selection_epsilon_max": 3.5,
+                },
+            ),
+            (
+                "without_epsilon_max",
+                lambda seen, result: (
+                    lambda data, single_linkage_tree, cluster_selection_method="eom", allow_single_cluster=False, match_reference_implementation=False, cluster_selection_epsilon=0.0, cluster_selection_persistence=0.0, max_cluster_size=0: (
+                        seen.__setitem__(
+                            "kwargs",
+                            {
+                                "cluster_selection_method": cluster_selection_method,
+                                "allow_single_cluster": allow_single_cluster,
+                                "match_reference_implementation": (
+                                    match_reference_implementation
+                                ),
+                                "cluster_selection_epsilon": cluster_selection_epsilon,
+                                "cluster_selection_persistence": (
+                                    cluster_selection_persistence
+                                ),
+                                "max_cluster_size": max_cluster_size,
+                            },
+                        )
+                        or result(data, single_linkage_tree)
+                    )
+                ),
+                {
+                    "cluster_selection_method": "leaf",
+                    "allow_single_cluster": True,
+                    "match_reference_implementation": True,
+                    "cluster_selection_epsilon": 0.25,
+                    "cluster_selection_persistence": 0.4,
+                    "max_cluster_size": 7,
+                },
+            ),
+            (
+                "no_optional_kwargs",
+                lambda seen, result: (
+                    lambda data, single_linkage_tree: (
+                        seen.__setitem__("kwargs", {})
+                        or result(data, single_linkage_tree)
+                    )
+                ),
+                {},
+            ),
+        ],
+    )
+    def test_tree_to_labels_filters_against_multiple_private_signatures(
+        self,
+        hdbscan_adapter_module,
+        monkeypatch,
+        signature_name,
+        factory,
+        expected_kwargs,
+    ):
+        del signature_name
+        data = np.zeros((4, 2), dtype=np.float64)
+        single_linkage_tree = np.array(
+            [[0, 1, 1.0], [1, 2, 2.0], [2, 3, 3.0]], dtype=np.float64
+        )
+        tree_kwargs = {
+            "cluster_selection_method": "leaf",
+            "allow_single_cluster": True,
+            "match_reference_implementation": True,
+            "cluster_selection_epsilon": 0.25,
+            "cluster_selection_persistence": 0.4,
+            "max_cluster_size": 7,
+            "cluster_selection_epsilon_max": 3.5,
+            "unsupported_flag": "drop-me",
+        }
+        seen = {}
+        monkeypatch.setattr(
+            hdbscan_adapter_module,
+            "_tree_to_labels",
+            factory(seen, self._minimal_tree_to_labels_result),
+        )
+
+        result = hdbscan_adapter_module.tree_to_labels(
+            data,
+            single_linkage_tree,
+            tree_kwargs=tree_kwargs,
+            min_spanning_tree=single_linkage_tree,
+        )
+
+        assert seen["kwargs"] == expected_kwargs
+        assert np.array_equal(result[-1], single_linkage_tree)
+
+    def test_tree_to_labels_preserves_unknown_kwargs_when_signature_accepts_kwargs(
+        self, hdbscan_adapter_module, monkeypatch
+    ):
+        seen = {}
+
+        def fake_tree_to_labels(data, single_linkage_tree, **kwargs):
+            seen["kwargs"] = kwargs
+            return self._minimal_tree_to_labels_result(data, single_linkage_tree)
+
+        monkeypatch.setattr(
+            hdbscan_adapter_module, "_tree_to_labels", fake_tree_to_labels
+        )
+        data = np.zeros((4, 2), dtype=np.float64)
+        single_linkage_tree = np.array(
+            [[0, 1, 1.0], [1, 2, 2.0], [2, 3, 3.0]], dtype=np.float64
+        )
+        tree_kwargs = {
+            "cluster_selection_method": "leaf",
+            "allow_single_cluster": True,
+            "unsupported_flag": "keep-me",
+        }
+
+        result = hdbscan_adapter_module.tree_to_labels(
+            data,
+            single_linkage_tree,
+            tree_kwargs=tree_kwargs,
+            min_spanning_tree=single_linkage_tree,
+        )
+
+        assert seen["kwargs"] == tree_kwargs
+        assert np.array_equal(result[-1], single_linkage_tree)
 
     def test_tree_to_labels_filters_kwargs_unsupported_by_installed_hdbscan(
         self, hdbscan_adapter_module, monkeypatch

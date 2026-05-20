@@ -159,6 +159,75 @@ class TestCoreSGHierarchy:
             obj._min_spanning_tree_array_, obj._min_spanning_tree_k_max_array_
         )
 
+    def test_extracting_smaller_k_updates_current_artifacts_without_mutating_k_max(
+        self, core_sg_module, fitted_obj, monkeypatch
+    ):
+        obj, _ = fitted_obj
+        labels_k_max = obj.labels_k_max_.copy()
+        condensed_k_max = obj._condensed_tree_k_max_array_.copy()
+        single_linkage_k_max = obj._single_linkage_tree_k_max_array_.copy()
+        mst_k_max = obj._min_spanning_tree_k_max_array_.copy()
+
+        obj.extract_hierarchy_from_core_sg(obj.k_max_)
+        first_current_mst = obj._min_spanning_tree_array_.copy()
+
+        def fake_mst_from_core_sg(
+            core_sg, metric_edges, core_k_list, n_nodes, k, verbose, progress_callback
+        ):
+            del core_sg, metric_edges, core_k_list, n_nodes, verbose
+            del progress_callback
+            return np.array(
+                [
+                    [0, 1, float(k)],
+                    [1, 2, float(k) + 0.1],
+                    [2, 3, float(k) + 0.2],
+                    [3, 4, float(k) + 0.3],
+                    [4, 5, float(k) + 0.4],
+                ],
+                dtype=np.float64,
+            )
+
+        def fake_tree_to_labels(instance, single_linkage_tree, min_spanning_tree):
+            k_marker = int(min_spanning_tree[0, 2])
+            condensed = np.column_stack(
+                [
+                    np.arange(instance.n_samples_),
+                    np.arange(instance.n_samples_),
+                    np.full(instance.n_samples_, float(k_marker)),
+                    np.full(instance.n_samples_, 2.0),
+                ]
+            ).astype(np.float64)
+            return (
+                np.full(instance.n_samples_, k_marker, dtype=np.int64),
+                np.full(instance.n_samples_, 1.0 / k_marker, dtype=np.float64),
+                np.array([float(k_marker)], dtype=np.float64),
+                condensed,
+                single_linkage_tree,
+                min_spanning_tree,
+            )
+
+        monkeypatch.setattr(core_sg_module, "mst_from_core_sg", fake_mst_from_core_sg)
+        monkeypatch.setattr(
+            core_sg_module,
+            "mst_to_single_linkage_tree",
+            lambda mst: np.asarray(mst, dtype=np.float64) + 10.0,
+        )
+        monkeypatch.setattr(core_sg_module, "tree_to_labels", fake_tree_to_labels)
+
+        obj.extract_hierarchy_from_core_sg(3)
+        second_current_mst = obj._min_spanning_tree_array_.copy()
+        obj.extract_hierarchy_from_core_sg(2)
+
+        assert np.array_equal(obj.labels_k_max_, labels_k_max)
+        assert np.array_equal(obj._condensed_tree_k_max_array_, condensed_k_max)
+        assert np.array_equal(
+            obj._single_linkage_tree_k_max_array_, single_linkage_k_max
+        )
+        assert np.array_equal(obj._min_spanning_tree_k_max_array_, mst_k_max)
+        assert np.array_equal(first_current_mst, mst_k_max)
+        assert not np.array_equal(second_current_mst, obj._min_spanning_tree_array_)
+        assert np.array_equal(obj.labels_, np.full(obj.n_samples_, 2))
+
     def test_extract_hierarchy_uses_default_c_for_noise_handler(
         self, core_sg_module, fitted_obj, monkeypatch
     ):
@@ -419,6 +488,81 @@ class TestCoreSGHierarchy:
         result = obj.extract_mst_from_core_sg(3)
 
         assert np.array_equal(result, mst_small)
+        assert isinstance(result, np.ndarray)
+        assert result.shape == (obj.n_samples_ - 1, 3)
+        assert np.isfinite(result[:, 2]).all()
+
+    def test_extract_mst_from_core_sg_smaller_k_to_dataframe(
+        self, core_sg_module, fitted_obj, monkeypatch
+    ):
+        obj, _ = fitted_obj
+        mst_small = np.array(
+            [[0, 1, 1.0], [1, 2, 1.2], [2, 3, 2.0], [3, 4, 1.1], [4, 5, 1.2]],
+            dtype=np.float64,
+        )
+        monkeypatch.setattr(
+            core_sg_module, "mst_from_core_sg", lambda *args, **kwargs: mst_small
+        )
+
+        df = obj.extract_mst_from_core_sg(3, toDF=True)
+
+        assert list(df.columns) == ["to", "from", "weight"]
+        assert str(df["to"].dtype) == "int64"
+        assert str(df["from"].dtype) == "int64"
+        assert str(df["weight"].dtype) == "float64"
+        assert df.shape == (obj.n_samples_ - 1, 3)
+
+    def test_score_sg_disconnected_mst_error_is_reworded(
+        self, core_sg_module, fitted_obj, monkeypatch
+    ):
+        obj, _ = fitted_obj
+        obj.algorithm = "score-sg"
+
+        def raise_disconnected(**kwargs):
+            del kwargs
+            raise ValueError("Disconex Graph")
+
+        monkeypatch.setattr(core_sg_module, "mst_from_core_sg", raise_disconnected)
+
+        with pytest.raises(ValueError, match="support graph is disconnected"):
+            obj.extract_mst_from_core_sg(3)
+
+    def test_extract_mst_reraises_unrelated_value_errors(
+        self, core_sg_module, fitted_obj, monkeypatch
+    ):
+        obj, _ = fitted_obj
+        obj.algorithm = "core-sg"
+
+        def raise_unrelated_error(*args, **kwargs):
+            del args, kwargs
+            raise ValueError("plain failure")
+
+        monkeypatch.setattr(core_sg_module, "mst_from_core_sg", raise_unrelated_error)
+
+        with pytest.raises(ValueError, match="plain failure"):
+            obj.extract_mst_from_core_sg(3)
+
+    def test_standalone_mst_and_reweight_helpers_validate_k(self, core_sg_module):
+        core_sg = np.array([[0.0, 1.0, -1.0]], dtype=np.float64)
+        metric_edges = np.array([[1.0, 0.0, 1.0]], dtype=np.float64)
+        core_k_list = np.ones((2, 2), dtype=np.float64)
+
+        with pytest.raises(ValueError, match="1 <= k_max <= n-1"):
+            core_sg_module.mst_from_core_sg(
+                core_sg, metric_edges, core_k_list, n_nodes=2, k=0
+            )
+        with pytest.raises(ValueError, match="reproduzir min_samples"):
+            core_sg_module.mst_from_core_sg(
+                core_sg, metric_edges, core_k_list, n_nodes=2, k=1
+            )
+        with pytest.raises(ValueError, match="1 <= k <= k_max"):
+            core_sg_module.core_sg_mutual_reachability_distance(
+                core_sg, metric_edges, core_k_list, n_nodes=2, k_max=2, k=0
+            )
+        with pytest.raises(ValueError, match="k must be >= 2"):
+            core_sg_module.core_sg_mutual_reachability_distance(
+                core_sg, metric_edges, core_k_list, n_nodes=2, k_max=2, k=1
+            )
 
     def test_extract_hierarchy_rejects_invalid_k_values(self, fitted_obj):
         obj, _ = fitted_obj
