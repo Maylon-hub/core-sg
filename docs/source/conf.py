@@ -49,6 +49,34 @@ for dependency in [
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 
+
+def _skip_sklearn_metadata_request_methods(
+    app,
+    what,
+    name,
+    obj,
+    skip,
+    options,
+):
+    """Do not render scikit-learn metadata-routing request helpers.
+
+    Newer scikit-learn versions dynamically add methods such as
+    ``set_fit_request``. Their upstream docstrings contain cross-references
+    that are valid in scikit-learn's documentation, but unresolved in this
+    project. They are inherited compatibility helpers rather than Core-SG API
+    surface, so hiding them keeps strict documentation builds stable across
+    scikit-learn and Sphinx releases.
+    """
+    del app, what, obj, options
+    if name.startswith("set_") and name.endswith("_request"):
+        return True
+    return skip
+
+
+def setup(app):
+    app.connect("autodoc-skip-member", _skip_sklearn_metadata_request_methods)
+
+
 try:
     __import__("sphinx_rtd_theme")
 except ImportError:

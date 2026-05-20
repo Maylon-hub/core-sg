@@ -20,22 +20,44 @@ OUT = ROOT / "source" / "_static" / "images" / "theory"
 
 def _box(ax, xy, text, width=2.4, height=0.75, color="#d7eef8"):
     x, y = xy
-    rect = Rectangle((x, y), width, height, facecolor=color, edgecolor="#24546a", linewidth=1.5)
+    rect = Rectangle(
+        (x, y), width, height, facecolor=color, edgecolor="#24546a", linewidth=1.5
+    )
     ax.add_patch(rect)
     ax.text(x + width / 2, y + height / 2, text, ha="center", va="center", fontsize=9)
     return rect
 
 
 def _arrow(ax, start, end):
-    ax.add_patch(FancyArrowPatch(start, end, arrowstyle="->", mutation_scale=12, linewidth=1.4, color="#334"))
+    ax.add_patch(
+        FancyArrowPatch(
+            start, end, arrowstyle="->", mutation_scale=12, linewidth=1.4, color="#334"
+        )
+    )
 
 
 def pipeline_overview():
-    labels = ["X", "pairwise\ndistances", "kNN\ngraph", "Core-SG\nsupport", "reweight(k)", "MST(k)", "hierarchy", "labels"]
+    labels = [
+        "X",
+        "pairwise\ndistances",
+        "kNN\ngraph",
+        "Core-SG\nsupport",
+        "reweight(k)",
+        "MST(k)",
+        "hierarchy",
+        "labels",
+    ]
     fig, ax = plt.subplots(figsize=(13, 2.4))
     ax.axis("off")
     for i, label in enumerate(labels):
-        _box(ax, (i * 1.65, 0.65), label, width=1.35, height=0.7, color="#e7f2d9" if i in {0, 7} else "#d7eef8")
+        _box(
+            ax,
+            (i * 1.65, 0.65),
+            label,
+            width=1.35,
+            height=0.7,
+            color="#e7f2d9" if i in {0, 7} else "#d7eef8",
+        )
         if i:
             _arrow(ax, ((i - 1) * 1.65 + 1.35, 1.0), (i * 1.65, 1.0))
     ax.set_xlim(-0.2, 13.0)
@@ -83,13 +105,28 @@ def support_graph_vs_mst():
     positions = [(0.5, 1.8), (1.6, 2.4), (2.6, 1.7), (1.9, 0.7), (0.7, 0.5)]
     support_edges = [(0, 1), (1, 2), (2, 3), (3, 4), (4, 0), (0, 3), (1, 3), (1, 4)]
     mst_edges = [(4, 0), (0, 1), (1, 2), (2, 3)]
-    for ax, title, edges in zip(axes, ["Support graph", "Extracted MST"], [support_edges, mst_edges]):
+    for ax, title, edges in zip(
+        axes, ["Support graph", "Extracted MST"], [support_edges, mst_edges]
+    ):
         ax.axis("off")
         ax.set_title(title)
         for u, v in edges:
-            ax.plot([positions[u][0], positions[v][0]], [positions[u][1], positions[v][1]], color="#59717c", linewidth=1.6)
+            ax.plot(
+                [positions[u][0], positions[v][0]],
+                [positions[u][1], positions[v][1]],
+                color="#59717c",
+                linewidth=1.6,
+            )
         for x, y in positions:
-            ax.add_patch(Circle((x, y), 0.13, facecolor="#e7f2d9", edgecolor="#24546a", linewidth=1.2))
+            ax.add_patch(
+                Circle(
+                    (x, y),
+                    0.13,
+                    facecolor="#e7f2d9",
+                    edgecolor="#24546a",
+                    linewidth=1.2,
+                )
+            )
         ax.set_xlim(0, 3.1)
         ax.set_ylim(0.1, 2.8)
     fig.savefig(OUT / "support_graph_vs_mst.png", dpi=180, bbox_inches="tight")
@@ -97,11 +134,22 @@ def support_graph_vs_mst():
 
 
 def hdbscan_adapter_boundary():
-    labels = ["CoreSG", "hdbscan_adapter", "filtered\n_tree_to_labels\nkwargs", "HDBSCAN\nprivate APIs"]
+    labels = [
+        "CoreSG",
+        "hdbscan_adapter",
+        "filtered\n_tree_to_labels\nkwargs",
+        "HDBSCAN\nprivate APIs",
+    ]
     fig, ax = plt.subplots(figsize=(9, 2.5))
     ax.axis("off")
     for i, label in enumerate(labels):
-        _box(ax, (i * 2.2, 0.8), label, width=1.8, color="#f8e6c8" if i == 1 else "#d7eef8")
+        _box(
+            ax,
+            (i * 2.2, 0.8),
+            label,
+            width=1.8,
+            color="#f8e6c8" if i == 1 else "#d7eef8",
+        )
         if i:
             _arrow(ax, ((i - 1) * 2.2 + 1.8, 1.18), (i * 2.2, 1.18))
     ax.set_xlim(-0.2, 8.8)
@@ -111,11 +159,24 @@ def hdbscan_adapter_boundary():
 
 
 def score_sg_pipeline():
-    labels = ["X", "PyNNDescent", "approximate\nkNN graph", "anti-hub\nselection", "support\ngraph", "MST /\nhierarchy"]
+    labels = [
+        "X",
+        "PyNNDescent",
+        "approximate\nkNN graph",
+        "anti-hub\nselection",
+        "support\ngraph",
+        "MST /\nhierarchy",
+    ]
     fig, ax = plt.subplots(figsize=(11, 2.6))
     ax.axis("off")
     for i, label in enumerate(labels):
-        _box(ax, (i * 1.75, 0.85), label, width=1.45, color="#e7f2d9" if i == 0 else "#d7eef8")
+        _box(
+            ax,
+            (i * 1.75, 0.85),
+            label,
+            width=1.45,
+            color="#e7f2d9" if i == 0 else "#d7eef8",
+        )
         if i:
             _arrow(ax, ((i - 1) * 1.75 + 1.45, 1.2), (i * 1.75, 1.2))
     ax.set_xlim(-0.2, 10.2)
@@ -141,12 +202,35 @@ def fallback_png(name: str, lines: list[str]) -> None:
 
 def fallback_all() -> None:
     diagrams = {
-        "pipeline_overview.png": ["X -> pairwise distances -> kNN graph -> Core-SG support", "-> reweight(k) -> MST(k) -> hierarchy -> labels"],
-        "multi_k_reuse.png": ["fit k_max=30", "-> extract k=25", "-> extract k=20", "-> extract k=15"],
-        "clusterer_reuse.png": ["CoreSGClusterer(k_max=30)", "fit(X, k=25): create core_sg_, fit, extract", "fit(X, k=20): reuse core_sg_, extract", "fit(X, k=15): reuse core_sg_, extract"],
-        "support_graph_vs_mst.png": ["Support graph: many reusable support edges", "Extracted MST: n - 1 selected edges for a target k"],
-        "hdbscan_adapter_boundary.png": ["CoreSG -> hdbscan_adapter", "-> filtered _tree_to_labels kwargs", "-> HDBSCAN private APIs"],
-        "score_sg_pipeline.png": ["X -> PyNNDescent -> approximate kNN graph", "-> anti-hub selection -> support graph -> MST / hierarchy"],
+        "pipeline_overview.png": [
+            "X -> pairwise distances -> kNN graph -> Core-SG support",
+            "-> reweight(k) -> MST(k) -> hierarchy -> labels",
+        ],
+        "multi_k_reuse.png": [
+            "fit k_max=30",
+            "-> extract k=25",
+            "-> extract k=20",
+            "-> extract k=15",
+        ],
+        "clusterer_reuse.png": [
+            "CoreSGClusterer(k_max=30)",
+            "fit(X, k=25): create core_sg_, fit, extract",
+            "fit(X, k=20): reuse core_sg_, extract",
+            "fit(X, k=15): reuse core_sg_, extract",
+        ],
+        "support_graph_vs_mst.png": [
+            "Support graph: many reusable support edges",
+            "Extracted MST: n - 1 selected edges for a target k",
+        ],
+        "hdbscan_adapter_boundary.png": [
+            "CoreSG -> hdbscan_adapter",
+            "-> filtered _tree_to_labels kwargs",
+            "-> HDBSCAN private APIs",
+        ],
+        "score_sg_pipeline.png": [
+            "X -> PyNNDescent -> approximate kNN graph",
+            "-> anti-hub selection -> support graph -> MST / hierarchy",
+        ],
     }
     for name, lines in diagrams.items():
         fallback_png(name, lines)

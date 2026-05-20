@@ -58,13 +58,26 @@ def generated_summary(df) -> None:
         image = Image.new("RGB", (1000, 420), "white")
         draw = ImageDraw.Draw(image)
         draw.rectangle((20, 20, 980, 400), outline="#24546a", width=3)
-        draw.text((55, 80), "Benchmark figures are copied from benchmarking/report_assets.", fill="#20333d")
-        draw.text((55, 125), "Regenerate in a full docs environment for CSV-derived plots.", fill="#20333d")
+        draw.text(
+            (55, 80),
+            "Benchmark figures are copied from benchmarking/report_assets.",
+            fill="#20333d",
+        )
+        draw.text(
+            (55, 125),
+            "Regenerate in a full docs environment for CSV-derived plots.",
+            fill="#20333d",
+        )
         image.save(OUT / "generated_runtime_summary.png")
         return
-    sample_col = _first_existing(list(df.columns), ["n_samples", "samples", "sample_size"])
+    sample_col = _first_existing(
+        list(df.columns), ["n_samples", "samples", "sample_size"]
+    )
     method_col = _first_existing(list(df.columns), ["method", "configuration", "name"])
-    time_col = _first_existing(list(df.columns), ["total_seconds_mean", "mean_seconds", "total_seconds", "fit_seconds_mean"])
+    time_col = _first_existing(
+        list(df.columns),
+        ["total_seconds_mean", "mean_seconds", "total_seconds", "fit_seconds_mean"],
+    )
     if sample_col is None or method_col is None or time_col is None:
         return
     grouped = df.groupby([sample_col, method_col], as_index=False)[time_col].mean()
@@ -98,14 +111,26 @@ def _method_label(method: str) -> str:
 def cumulative_results(df):
     if df is None or df.empty or pd is None:
         return None
-    required = {"n_samples", "method", "family", "k", "fit_seconds", "extract_seconds", "total_seconds"}
+    required = {
+        "n_samples",
+        "method",
+        "family",
+        "k",
+        "fit_seconds",
+        "extract_seconds",
+        "total_seconds",
+    }
     if not required.issubset(df.columns):
         return None
 
     rows = []
-    for (n_samples, method, family), part in df.groupby(["n_samples", "method", "family"]):
+    for (n_samples, method, family), part in df.groupby(
+        ["n_samples", "method", "family"]
+    ):
         part = part.sort_values("k", ascending=False)
-        if str(family) in {"CoreSG", "ScoreSG"} or str(method).startswith(("CoreSG", "ScoreSG")):
+        if str(family) in {"CoreSG", "ScoreSG"} or str(method).startswith(
+            ("CoreSG", "ScoreSG")
+        ):
             fit_seconds = float(part["fit_seconds"].fillna(0).iloc[0])
             extract_seconds = float(part["extract_seconds"].fillna(0).sum())
             total_seconds = fit_seconds + extract_seconds
@@ -213,7 +238,9 @@ def _cumulative_records() -> list[dict[str, float | str | int]]:
         rows.sort(key=lambda item: int(item["k"]), reverse=True)
         if family in {"CoreSG", "ScoreSG"} or method.startswith(("CoreSG", "ScoreSG")):
             fit_seconds = float(rows[0].get("fit_seconds") or 0.0)
-            extract_seconds = sum(float(row.get("extract_seconds") or 0.0) for row in rows)
+            extract_seconds = sum(
+                float(row.get("extract_seconds") or 0.0) for row in rows
+            )
             total_seconds = fit_seconds + extract_seconds
         else:
             total_seconds = sum(float(row.get("total_seconds") or 0.0) for row in rows)
@@ -278,7 +305,11 @@ def _draw_pil_line_chart(
         draw.line((x, bottom, x, bottom + 7), fill="#263238", width=1)
         draw.text((x - 34, bottom + 14), f"{tick:,}", fill="#263238", font=small_font)
 
-    y_ticks = [10, 100, 1000, 10000] if log_y else [0, raw_max_y / 4, raw_max_y / 2, raw_max_y * 3 / 4, raw_max_y]
+    y_ticks = (
+        [10, 100, 1000, 10000]
+        if log_y
+        else [0, raw_max_y / 4, raw_max_y / 2, raw_max_y * 3 / 4, raw_max_y]
+    )
     for tick in y_ticks:
         if tick <= 0 or tick > raw_max_y:
             continue
@@ -318,10 +349,22 @@ def generated_score_sg_fallback_figures() -> None:
 
     common_samples = [5000, 10000, 20000, 30000, 40000, 50000]
     common_series = [
-        (_method_label("ScoreSG_extractMatchRef_false"), values_for("ScoreSG_extractMatchRef_false", common_samples)),
-        (_method_label("CoreSG_fitMatchRef_true_extractMatchRef_false"), values_for("CoreSG_fitMatchRef_true_extractMatchRef_false", common_samples)),
-        (_method_label("HDBSCAN_algorithm_best_matchRef_false"), values_for("HDBSCAN_algorithm_best_matchRef_false", common_samples)),
-        (_method_label("HDBSCAN_algorithm_generic_matchRef_false"), values_for("HDBSCAN_algorithm_generic_matchRef_false", common_samples)),
+        (
+            _method_label("ScoreSG_extractMatchRef_false"),
+            values_for("ScoreSG_extractMatchRef_false", common_samples),
+        ),
+        (
+            _method_label("CoreSG_fitMatchRef_true_extractMatchRef_false"),
+            values_for("CoreSG_fitMatchRef_true_extractMatchRef_false", common_samples),
+        ),
+        (
+            _method_label("HDBSCAN_algorithm_best_matchRef_false"),
+            values_for("HDBSCAN_algorithm_best_matchRef_false", common_samples),
+        ),
+        (
+            _method_label("HDBSCAN_algorithm_generic_matchRef_false"),
+            values_for("HDBSCAN_algorithm_generic_matchRef_false", common_samples),
+        ),
     ]
     _draw_pil_line_chart(
         OUT / "score_sg_common_runtime.png",
@@ -330,10 +373,29 @@ def generated_score_sg_fallback_figures() -> None:
         log_y=True,
     )
 
-    score_samples = [5000, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000, 90000, 100000, 200000]
+    score_samples = [
+        5000,
+        10000,
+        20000,
+        30000,
+        40000,
+        50000,
+        60000,
+        70000,
+        80000,
+        90000,
+        100000,
+        200000,
+    ]
     score_series = [
-        (_method_label("ScoreSG_extractMatchRef_false"), values_for("ScoreSG_extractMatchRef_false", score_samples)),
-        (_method_label("ScoreSG_extractMatchRef_true"), values_for("ScoreSG_extractMatchRef_true", score_samples)),
+        (
+            _method_label("ScoreSG_extractMatchRef_false"),
+            values_for("ScoreSG_extractMatchRef_false", score_samples),
+        ),
+        (
+            _method_label("ScoreSG_extractMatchRef_true"),
+            values_for("ScoreSG_extractMatchRef_true", score_samples),
+        ),
     ]
     _draw_pil_line_chart(
         OUT / "score_sg_extended_runtime.png",
@@ -348,7 +410,10 @@ def main() -> None:
     df = load_results()
     generated_summary(df)
     generated_score_sg_figures(df)
-    if not (OUT / "score_sg_common_runtime.png").exists() or not (OUT / "score_sg_extended_runtime.png").exists():
+    if (
+        not (OUT / "score_sg_common_runtime.png").exists()
+        or not (OUT / "score_sg_extended_runtime.png").exists()
+    ):
         generated_score_sg_fallback_figures()
 
 

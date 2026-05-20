@@ -3,6 +3,7 @@ Estimator API
 
 .. autoclass:: core_sg.CoreSGClusterer
    :members:
+   :exclude-members: set_fit_request
    :member-order: bysource
 
 Required Behavior Notes
