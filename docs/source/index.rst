@@ -11,6 +11,11 @@ The project is aimed at exploratory density-based analysis where comparing
 several smoothing levels on the same dataset is part of the workflow. A single
 plain HDBSCAN run may be simpler when only one ``k`` value is needed.
 
+For larger datasets, use the algorithm choice deliberately. The exact
+``algorithm="core-sg"`` path uses dense pairwise distance information and can
+be limited by ``n_samples``. The approximate ``algorithm="score-sg"`` path is
+the scalable alternative for larger repeated multi-``k`` workloads.
+
 Key Features
 ------------
 

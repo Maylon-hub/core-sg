@@ -4,6 +4,11 @@ Score-SG
 Use ``algorithm="score-sg"`` to select the approximate anti-hub reinforced
 graph-construction path.
 
+Score-SG is the scalable path to use when the traditional exact
+``algorithm="core-sg"`` construction becomes limited by ``n_samples``. The
+exact path builds dense pairwise distance information; Score-SG avoids that
+dense all-pairs stage by using an approximate sparse-neighbor graph.
+
 .. code-block:: python
 
    from core_sg import CoreSGClusterer
@@ -40,6 +45,11 @@ Score-SG uses PyNNDescent to build an approximate nearest-neighbor graph,
 derives approximate core-distance lists, selects anti-hubs by directed
 in-degree, adds support edges among selected anti-hubs, and then reuses the
 same MST and hierarchy machinery as the classical path.
+
+In the current benchmark pages, Score-SG is also the best-performing method in
+the common repeated multi-``k`` comparison against exact CoreSG and HDBSCAN.
+See :doc:`../performance/score_sg_results` for the measured speedups and
+extended scaling results.
 
 Important Behaviors
 -------------------

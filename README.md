@@ -182,14 +182,17 @@ internal fitted support graph.
 `algorithm="core-sg"` is the default exact path. It builds dense pairwise
 distance information internally, constructs reusable support at `k_max`, and
 is the recommended first choice when the exact graph construction cost is
-acceptable.
+acceptable. Because this path materializes dense pairwise distance information,
+it has a practical `n_samples` limitation as datasets grow.
 
 `algorithm="score-sg"` is the approximate path. It uses PyNNDescent for
 approximate neighbor discovery, selects anti-hubs by directed in-degree, and
 uses `random_state` plus `approx_knn_kwargs` to control reproducibility and
 approximate-neighbor behavior. It can be useful when dense all-pairs distance
 construction is too expensive, but the resulting support graph may be
-disconnected for some data and parameter settings.
+disconnected for some data and parameter settings. In practice, this is the
+scalable path to try when the traditional exact CoreSG construction becomes
+limited by sample size.
 
 ### Using the approximate variant
 
@@ -312,9 +315,21 @@ In `notebooks/01-HDBSCAN_comparision.ipynb`, for a synthetic setup (`n=5000`, `d
 
 This notebook demonstrates the intended tradeoff: higher upfront cost at `k_max`, lower cumulative cost when reusing across multiple smaller `k` values.
 
+For larger sample sizes, prefer the approximate `algorithm="score-sg"` path.
+The exact `algorithm="core-sg"` path still relies on dense pairwise distance
+information and can become constrained by `n_samples`. The current ScoreSG
+benchmarks show substantially better cumulative runtime in repeated multi-`k`
+workloads: at `n=50000`, ScoreSG completes the tested `49`-value workflow in
+`224.36 s`, compared with `525.45 s` for optimized exact CoreSG and
+`1342.44 s` for optimized HDBSCAN `best`.
+
 ## Known limitations
 
 - Core-SG provides strongest gains in repeated multi-`k` usage
+- exact `algorithm="core-sg"` can be limited by `n_samples` because it uses
+  dense pairwise distance information
+- use `algorithm="score-sg"` when that dense exact construction becomes too
+  costly and an approximate sparse-neighbor workflow is acceptable
 - for single `k` workflows, plain HDBSCAN may be simpler
 - current hierarchy pipeline still depends on HDBSCAN ecosystem components
 

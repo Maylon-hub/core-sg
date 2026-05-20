@@ -6,6 +6,11 @@ intended for experiments where dense all-pairs distance construction is too
 expensive or where the anti-hub reinforced support graph is part of the method
 being evaluated.
 
+This makes Score-SG the scalable option when the traditional exact CoreSG path
+is limited by ``n_samples``. Exact CoreSG remains valuable for reference-style
+construction, but its dense pairwise matrix becomes increasingly restrictive as
+sample size grows.
+
 .. raw:: html
 
    <div class="docs-diagram">

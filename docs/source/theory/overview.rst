@@ -32,3 +32,9 @@ The high-level flow is:
 
 The main benefit appears when several ``k`` values are needed for the same
 dataset.
+
+The default exact ``algorithm="core-sg"`` path demonstrates the reuse model but
+still depends on dense pairwise distance information, which creates a practical
+``n_samples`` limit. The approximate ``algorithm="score-sg"`` path is designed
+to address that scaling limitation by replacing dense all-pairs construction
+with a sparse approximate-neighbor support graph.
