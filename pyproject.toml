@@ -82,10 +82,6 @@ Documentation = "https://midas-core-sg.github.io/core-sg/"
 [tool.setuptools]
 include-package-data = true
 zip-safe = false
-ext-modules = [
-  {name = "core_sg._mst_kruskal", sources = ["core_sg/_mst_kruskal.pyx"]},
-  {name = "core_sg._reweight", sources = ["core_sg/_reweight.pyx"]},
-]
 
 [tool.setuptools.packages.find]
 include = ["core_sg", "core_sg.*"]
