@@ -140,7 +140,9 @@ def batch_slug(*parts: object) -> str:
     return "-".join(str(part).replace("_", "-") for part in parts)
 
 
-def base_command(args: argparse.Namespace, output_dir: Path, tie_output_dir: Path) -> list[str]:
+def base_command(
+    args: argparse.Namespace, output_dir: Path, tie_output_dir: Path
+) -> list[str]:
     command = [
         sys.executable,
         "benchmarking/missing_edges/missing_edges_connectivity.py",
@@ -181,7 +183,9 @@ def iter_batches(args: argparse.Namespace) -> list[Batch]:
     for distribution in args.distributions:
         for n_samples in args.sample_sizes:
             for n_features in args.dimensions:
-                slug = batch_slug("synthetic", distribution, f"n{n_samples}", f"d{n_features}")
+                slug = batch_slug(
+                    "synthetic", distribution, f"n{n_samples}", f"d{n_features}"
+                )
                 output_dir = run_root / slug
                 tie_output_dir = tie_run_root / slug
                 command = base_command(args, output_dir, tie_output_dir)

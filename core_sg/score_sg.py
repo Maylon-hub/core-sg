@@ -85,9 +85,7 @@ def build_approximate_knn_graph(
         {}
         if approx_knn_kwargs is None
         else {
-            key: value
-            for key, value in approx_knn_kwargs.items()
-            if value is not None
+            key: value for key, value in approx_knn_kwargs.items() if value is not None
         }
     )
     if kwargs.get("compressed", False):

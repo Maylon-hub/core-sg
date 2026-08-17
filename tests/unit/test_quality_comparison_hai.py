@@ -127,9 +127,7 @@ def test_reusable_mst_array_reconstructs_when_cache_is_missing(monkeypatch):
         assert kwargs["k"] == 2
         return expected
 
-    monkeypatch.setattr(
-        quality_comparison, "mst_from_core_sg", fake_mst_from_core_sg
-    )
+    monkeypatch.setattr(quality_comparison, "mst_from_core_sg", fake_mst_from_core_sg)
 
     result = reusable_mst_array(Core(), k=2, k_max=2)
 
