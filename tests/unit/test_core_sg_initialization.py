@@ -110,6 +110,29 @@ class TestCoreSGInitialization:
 
         assert obj.anti_hubs_ is None
 
+    def test_property_setters_store_raw_arrays(self, core_sg_module):
+        obj = core_sg_module.CoreSG()
+
+        obj.distance_matrix_ = np.eye(2)
+        obj.condensed_tree_ = np.ones((1, 4), dtype=np.float64)
+        obj.single_linkage_tree_ = np.ones((1, 3), dtype=np.float64)
+        obj.minimum_spanning_tree_ = np.ones((1, 3), dtype=np.float64)
+
+        assert obj.distance_matrix_.shape == (2, 2)
+        assert np.array_equal(obj._condensed_tree_array_, np.ones((1, 4)))
+        assert np.array_equal(obj._single_linkage_tree_array_, np.ones((1, 3)))
+        assert np.array_equal(obj._min_spanning_tree_array_, np.ones((1, 3)))
+
+    def test_set_verbose_validates_and_updates_value(self, core_sg_module):
+        obj = core_sg_module.CoreSG()
+
+        with pytest.raises(ValueError, match="verbose"):
+            obj.set_verbose(-1)
+
+        obj.set_verbose(2)
+
+        assert obj.verbose == 2
+
     def test_get_tree_to_labels_kwargs_filters_supported_non_none_values(
         self, core_sg_module
     ):
@@ -128,6 +151,42 @@ class TestCoreSGInitialization:
             "allow_single_cluster": True,
             "cluster_selection_epsilon": 0.25,
         }
+
+    @pytest.mark.parametrize(
+        ("parameter", "value"),
+        [
+            ("cluster_selection_method", "leaf"),
+            ("allow_single_cluster", True),
+            ("match_reference_implementation", True),
+            ("cluster_selection_epsilon", 0.25),
+            ("cluster_selection_persistence", 0.3),
+            ("max_cluster_size", 7),
+            ("cluster_selection_epsilon_max", 2.5),
+        ],
+    )
+    def test_hdbscan_style_parameters_are_stored_and_considered_for_labels(
+        self, core_sg_module, parameter, value
+    ):
+        obj = core_sg_module.CoreSG(**{parameter: value})
+
+        assert obj.hdbscan_kwargs[parameter] == value
+        assert obj._get_tree_to_labels_kwargs() == {parameter: value}
+
+    def test_hdbscan_style_parameters_with_none_values_are_not_forwarded(
+        self, core_sg_module
+    ):
+        obj = core_sg_module.CoreSG(
+            cluster_selection_method=None,
+            cluster_selection_persistence=None,
+            unsupported_flag="ignored",
+        )
+
+        assert obj.hdbscan_kwargs == {
+            "cluster_selection_method": None,
+            "cluster_selection_persistence": None,
+            "unsupported_flag": "ignored",
+        }
+        assert obj._get_tree_to_labels_kwargs() == {}
 
     def test_properties_raise_before_fit_or_extract(self, core_sg_module):
         obj = core_sg_module.CoreSG()
@@ -149,6 +208,31 @@ class TestCoreSGInitialization:
 
 
 class TestBuildCoreSGInputValidation:
+    def test_build_core_sg_from_data_uses_minkowski_and_arccos_metrics(
+        self, core_sg_module
+    ):
+        X = np.array([[1.0, 0.0], [0.0, 1.0], [2.0, 0.0]], dtype=np.float64)
+
+        _, _, _, D_minkowski, _ = core_sg_module.build_core_sg_from_data(
+            X, k_max=2, metric="minkowski", p=3
+        )
+        _, _, _, D_arccos, _ = core_sg_module.build_core_sg_from_data(
+            X, k_max=2, metric="arccos"
+        )
+
+        assert D_minkowski.shape == (3, 3)
+        assert D_arccos.shape == (3, 3)
+
+    def test_build_by_algorithm_rejects_invalid_internal_algorithm(
+        self, core_sg_module
+    ):
+        obj = core_sg_module.CoreSG()
+        obj.algorithm = "invalid"
+        X = np.array([[0.0], [1.0], [2.0]], dtype=np.float64)
+
+        with pytest.raises(ValueError, match="algorithm"):
+            obj._build_by_algorithm(X, k_max=2)
+
     def test_build_core_sg_from_data_rejects_single_point_input(self, core_sg_module):
         X = np.array([[0.0, 1.0]], dtype=np.float64)
 

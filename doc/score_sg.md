@@ -2,6 +2,8 @@
 
 This document explains how `algorithm="score-sg"` is currently implemented in the codebase, what the execution flow is, which parts are shared with classical `core-sg`, and which design decisions were intentionally changed to keep the implementation aligned with the current goals of the project.
 
+ScoreSG is also the intended scalable alternative when the traditional exact `algorithm="core-sg"` path becomes limited by `n_samples`. The exact path relies on dense pairwise distance information, while ScoreSG avoids the explicit all-pairs construction by working from an approximate sparse-neighbor graph.
+
 Its purpose is simple:
 
 - make the implemented behavior easy to audit

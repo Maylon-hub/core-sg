@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "core-sg"
-version = "0.1.1rc1"
+version = "0.1.1rc2"
 description = "Core-SG graph construction and MST extraction utilities for HDBSCAN-style clustering."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -62,11 +62,22 @@ dev = [
   "cibuildwheel>=2.20",
   "twine>=5.1.0",
 ]
+docs = [
+  "sphinx>=7",
+  "sphinx-rtd-theme>=2",
+  "sphinx-autodoc-typehints>=2",
+  "myst-parser>=2",
+  "nbsphinx>=0.9",
+  "ipython",
+  "matplotlib",
+  "pandas",
+  "scikit-learn",
+]
 
 [project.urls]
 Source = "https://github.com/midas-core-sg/core-sg"
 Issues = "https://github.com/midas-core-sg/core-sg/issues"
-Documentation = "https://github.com/midas-core-sg/core-sg#readme"
+Documentation = "https://midas-core-sg.github.io/core-sg/"
 
 [tool.setuptools]
 include-package-data = true

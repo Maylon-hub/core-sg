@@ -218,21 +218,76 @@ jobs:
       - name: Run smoke test against TestPyPI package
         run: |
           python - <<'PY'
+          import numpy as np
           from sklearn.datasets import make_blobs
           from core_sg import CoreSG
 
-          X, _ = make_blobs(
-              n_samples=500,
+          def assert_hierarchy_outputs(core, X, *, k_max):
+              assert core.n_samples_ == X.shape[0]
+              assert core.k_max_ == k_max
+              assert core.labels_ is not None
+              assert core.labels_.shape == (X.shape[0],)
+              assert core.probabilities_ is not None
+              assert core.probabilities_.shape == (X.shape[0],)
+              assert core.cluster_persistence_ is not None
+              assert core.condensed_tree_.to_pandas().shape[0] >= X.shape[0]
+              assert core.single_linkage_tree_.to_pandas().shape[0] == X.shape[0] - 1
+              assert core.minimum_spanning_tree_.to_pandas().shape[0] == X.shape[0] - 1
+
+          X, _ = make_blobs(n_samples=120, n_features=3, centers=3, random_state=42)
+          connected_X, _ = make_blobs(
+              n_samples=80,
               n_features=3,
-              centers=3,
-              random_state=42,
+              centers=1,
+              cluster_std=0.75,
+              random_state=123,
           )
 
-          core = CoreSG(metric="euclidean", p=2)
-          core.fit(X, k_max=5)
-          mst = core.extract_mst_from_core_sg(k=3)
+          core_first = CoreSG(metric="euclidean", p=2, no_noise=False)
+          core_first.fit(X, k_max=6)
+          core_first.extract_hierarchy_from_core_sg(k=4)
+          assert_hierarchy_outputs(core_first, X, k_max=6)
 
-          assert mst is not None
+          core_second = CoreSG(
+              metric="manhattan",
+              p=2,
+              no_noise=False,
+              cluster_selection_method="leaf",
+              allow_single_cluster=True,
+          )
+          core_second.fit(X, k_max=5)
+          core_second.extract_hierarchy_from_core_sg(k=3)
+          assert_hierarchy_outputs(core_second, X, k_max=5)
+
+          score_first = CoreSG(
+              metric="euclidean",
+              p=2,
+              algorithm="score-sg",
+              random_state=42,
+              no_noise=False,
+          )
+          score_first.fit(connected_X, k_max=6)
+          score_first.extract_hierarchy_from_core_sg(k=4)
+          assert_hierarchy_outputs(score_first, connected_X, k_max=6)
+          assert score_first.anti_hubs_.shape == (
+              int(np.floor(np.sqrt(connected_X.shape[0]))),
+          )
+
+          score_second = CoreSG(
+              metric="euclidean",
+              p=2,
+              algorithm="score-sg",
+              random_state=7,
+              approx_knn_kwargs={"n_trees": 8},
+              no_noise=False,
+              cluster_selection_method="leaf",
+              allow_single_cluster=True,
+          )
+          score_second.fit(connected_X, k_max=5)
+          score_second.extract_hierarchy_from_core_sg(k=3)
+          assert_hierarchy_outputs(score_second, connected_X, k_max=5)
+          assert score_second.anti_hubs_.shape == score_first.anti_hubs_.shape
+
           print("Smoke test passed.")
           PY
 
@@ -295,20 +350,75 @@ jobs:
       - name: Run smoke test against PyPI package
         run: |
           python - <<'PY'
+          import numpy as np
           from sklearn.datasets import make_blobs
           from core_sg import CoreSG
 
-          X, _ = make_blobs(
-              n_samples=500,
+          def assert_hierarchy_outputs(core, X, *, k_max):
+              assert core.n_samples_ == X.shape[0]
+              assert core.k_max_ == k_max
+              assert core.labels_ is not None
+              assert core.labels_.shape == (X.shape[0],)
+              assert core.probabilities_ is not None
+              assert core.probabilities_.shape == (X.shape[0],)
+              assert core.cluster_persistence_ is not None
+              assert core.condensed_tree_.to_pandas().shape[0] >= X.shape[0]
+              assert core.single_linkage_tree_.to_pandas().shape[0] == X.shape[0] - 1
+              assert core.minimum_spanning_tree_.to_pandas().shape[0] == X.shape[0] - 1
+
+          X, _ = make_blobs(n_samples=120, n_features=3, centers=3, random_state=42)
+          connected_X, _ = make_blobs(
+              n_samples=80,
               n_features=3,
-              centers=3,
-              random_state=42,
+              centers=1,
+              cluster_std=0.75,
+              random_state=123,
           )
 
-          core = CoreSG(metric="euclidean", p=2)
-          core.fit(X, k_max=5)
-          mst = core.extract_mst_from_core_sg(k=3)
+          core_first = CoreSG(metric="euclidean", p=2, no_noise=False)
+          core_first.fit(X, k_max=6)
+          core_first.extract_hierarchy_from_core_sg(k=4)
+          assert_hierarchy_outputs(core_first, X, k_max=6)
 
-          assert mst is not None
+          core_second = CoreSG(
+              metric="manhattan",
+              p=2,
+              no_noise=False,
+              cluster_selection_method="leaf",
+              allow_single_cluster=True,
+          )
+          core_second.fit(X, k_max=5)
+          core_second.extract_hierarchy_from_core_sg(k=3)
+          assert_hierarchy_outputs(core_second, X, k_max=5)
+
+          score_first = CoreSG(
+              metric="euclidean",
+              p=2,
+              algorithm="score-sg",
+              random_state=42,
+              no_noise=False,
+          )
+          score_first.fit(connected_X, k_max=6)
+          score_first.extract_hierarchy_from_core_sg(k=4)
+          assert_hierarchy_outputs(score_first, connected_X, k_max=6)
+          assert score_first.anti_hubs_.shape == (
+              int(np.floor(np.sqrt(connected_X.shape[0]))),
+          )
+
+          score_second = CoreSG(
+              metric="euclidean",
+              p=2,
+              algorithm="score-sg",
+              random_state=7,
+              approx_knn_kwargs={"n_trees": 8},
+              no_noise=False,
+              cluster_selection_method="leaf",
+              allow_single_cluster=True,
+          )
+          score_second.fit(connected_X, k_max=5)
+          score_second.extract_hierarchy_from_core_sg(k=3)
+          assert_hierarchy_outputs(score_second, connected_X, k_max=5)
+          assert score_second.anti_hubs_.shape == score_first.anti_hubs_.shape
+
           print("Smoke test passed.")
           PY
