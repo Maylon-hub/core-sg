@@ -10,8 +10,9 @@ At the time of writing, this repository does not claim endorsement by the
 compatibility, attribution, and documentation purposes only.
 
 Original project:
-- Repository: https://github.com/scikit-learn-contrib/hdbscan
-- Documentation: https://hdbscan.readthedocs.io/en/latest/
+
+- Repository: <https://github.com/scikit-learn-contrib/hdbscan>
+- Documentation: <https://hdbscan.readthedocs.io/en/latest/>
 
 ## HDBSCAN copyright and license notice
 

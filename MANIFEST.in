@@ -1,11 +1,8 @@
 include README.md
 include LICENSE
 include THIRD_PARTY_NOTICES.md
-recursive-include core_sg *.py
-recursive-include core_sg *.pyx
+recursive-include core_sg *.py *.pyx *.c *.h
 prune build
-global-exclude *.c
-global-exclude *.cpp
 global-exclude *.so
 global-exclude *.pyd
 global-exclude *.dll
