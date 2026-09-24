@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "core-sg-mustache"
-version = "0.4.0"
+version = "0.4.2"
 description = "Core-SG graph construction and MST extraction utilities for HDBSCAN-style clustering."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -95,7 +95,6 @@ include = ["core_sg", "core_sg.*"]
 [tool.cibuildwheel]
 build = "cp310-* cp311-* cp312-* cp313-*"
 skip = ["*-musllinux_*", "*-manylinux_i686", "pp*"]
-test-requires = ["scikit-learn>=1.3", "numpy>=1.24,<3", "pandas>=2.0"]
 test-command = "python -c \"from sklearn.datasets import make_blobs; from core_sg import CoreSG; X, _ = make_blobs(n_samples=120, n_features=3, centers=3, random_state=42); core = CoreSG(metric='euclidean', p=2); core.fit(X, k_max=5); mst = core.extract_mst_from_core_sg(k=3); assert mst is not None\""
 
 [tool.cibuildwheel.macos]
@@ -106,7 +105,7 @@ test-skip = "*_x86_64"
 archs = ["AMD64"]
 
 [tool.cibuildwheel.linux]
-manylinux-x86_64-image = "manylinux2014"
+manylinux-x86_64-image = "manylinux_2_28"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
