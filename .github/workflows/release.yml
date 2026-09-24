@@ -159,7 +159,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/core-sg
+      url: https://test.pypi.org/p/core-sg-mustache
 
     permissions:
       id-token: write
@@ -202,17 +202,17 @@ jobs:
           VERSION: ${{ needs.release-context.outputs.version }}
         run: |
           for attempt in $(seq 1 20); do
-            echo "Attempt ${attempt}: trying to install core-sg==${VERSION} from TestPyPI"
+            echo "Attempt ${attempt}: trying to install core-sg-mustache==${VERSION} from TestPyPI"
             if python -m pip install --no-cache-dir \
               --index-url https://test.pypi.org/simple/ \
               --extra-index-url https://pypi.org/simple/ \
-              "core-sg==${VERSION}"; then
+              "core-sg-mustache==${VERSION}"; then
               exit 0
             fi
             sleep $((attempt * 5))
           done
 
-          echo "Timed out waiting for core-sg==${VERSION} to become available on TestPyPI."
+          echo "Timed out waiting for core-sg-mustache==${VERSION} to become available on TestPyPI."
           exit 1
 
       - name: Run smoke test against TestPyPI package
@@ -297,7 +297,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/core-sg
+      url: https://pypi.org/p/core-sg-mustache
 
     permissions:
       id-token: write
@@ -337,14 +337,14 @@ jobs:
           VERSION: ${{ needs.release-context.outputs.version }}
         run: |
           for attempt in $(seq 1 20); do
-            echo "Attempt ${attempt}: trying to install core-sg==${VERSION} from PyPI"
-            if python -m pip install --no-cache-dir "core-sg==${VERSION}"; then
+            echo "Attempt ${attempt}: trying to install core-sg-mustache==${VERSION} from PyPI"
+            if python -m pip install --no-cache-dir "core-sg-mustache==${VERSION}"; then
               exit 0
             fi
             sleep $((attempt * 5))
           done
 
-          echo "Timed out waiting for core-sg==${VERSION} to become available on PyPI."
+          echo "Timed out waiting for core-sg-mustache==${VERSION} to become available on PyPI."
           exit 1
 
       - name: Run smoke test against PyPI package
