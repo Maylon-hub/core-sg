@@ -1,5 +1,4 @@
 from __future__ import annotations
-import hdbscan
 
 from time import time
 from typing import Any, Callable
@@ -11,6 +10,7 @@ from sklearn.metrics import pairwise_distances
 
 from .edges import add_mst_edges_to_metric_edges, build_knng_vectors
 from .hdbscan_adapter import (
+    fit_euclidean_reference,
     mst_to_single_linkage_tree,
     reference_mst_original_distance,
     wrap_condensed_tree,
@@ -23,7 +23,7 @@ from .hdbscan_adapter import (
 from .knn import knn_from_precomputed
 from .mst_kruskal import kruskal_mst
 from .noise_handler import build_noise_handler
-from .reweight import reweight_core_sg_mutual_reachability, sort_core_sg
+from .reweight import reweight_core_sg_mutual_reachability
 from .score_sg import build_score_sg_from_data, is_graph_connected
 
 ProgressCallback = Callable[[str, float, dict[str, Any]], None]
@@ -76,8 +76,15 @@ def build_core_sg_from_data(
     min_samples_k = k_max
     graph_knn_k = min_samples_k
 
-    if metric == "euclidean" and n <= 10000 and X.ndim == 2 and X.shape[1] <= 15:
+    if (
+        not _round_distances
+        and metric == "euclidean"
+        and n <= 10000
+        and X.ndim == 2
+        and X.shape[1] <= 15
+    ):
         from scipy.spatial import cKDTree
+
         tree = cKDTree(X)
         dists_all, idxs_all = tree.query(X, k=k_max + 1)
         idxs_graph = idxs_all[:, 1:].astype(np.int64)
@@ -91,15 +98,7 @@ def build_core_sg_from_data(
             k_max=graph_knn_k,
         )
 
-        clusterer = hdbscan.HDBSCAN(
-            min_cluster_size=k_max,
-            min_samples=k_max,
-            metric="euclidean",
-            core_dist_n_jobs=1,
-            gen_min_span_tree=True,
-            approx_min_span_tree=False,
-        )
-        clusterer.fit(X)
+        clusterer = fit_euclidean_reference(X, k_max=k_max)
         hdb_obj = clusterer
         mst_orig = np.asarray(clusterer._min_spanning_tree, dtype=np.float64)
         D = np.zeros((n, n), dtype=np.float64)
@@ -185,22 +184,14 @@ def mst_from_core_sg(
     if k < 2:
         raise ValueError("k_max deve ser >= 2 para reproduzir min_samples do HDBSCAN.")
 
-    n_mst_edges = n_nodes - 1
-    n_knng_total = core_sg.shape[0] - n_mst_edges
-    k_max_total = n_knng_total // n_nodes
-
-    if k < k_max_total and n_knng_total == n_nodes * k_max_total:
-        knng_part = core_sg[:n_knng_total].reshape(n_nodes, k_max_total, 3)[:, :k, :].reshape(-1, 3)
-        mst_part = core_sg[n_knng_total:]
-        active_core_sg = np.vstack([knng_part, mst_part])
-    else:
-        active_core_sg = core_sg
-
     t0 = time()
     core_k = core_k_list[:, k - 1]
     core_k = np.ascontiguousarray(core_k, dtype=np.float64)
     weighted = reweight_core_sg_mutual_reachability(
-        core_sg=active_core_sg,
+        # Core-SG's guarantee depends on retaining the complete support graph
+        # built for k_max. Truncating each kNN row to the requested k can
+        # discard edges required by the reference MST for smaller k values.
+        core_sg=core_sg,
         core_k=core_k,
         metric_edges=metric_edges,
         n_nodes=n_nodes,

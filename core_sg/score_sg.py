@@ -3,19 +3,17 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-
-try:
-    from pynndescent import NNDescent
-except ImportError as exc:
-    NNDescent = None
-    _PYNNDESCENT_IMPORT_ERROR = exc
-else:
-    _PYNNDESCENT_IMPORT_ERROR = None
 from sklearn.metrics.pairwise import paired_distances
 from sklearn.utils import check_random_state
 
 from .edges import build_knng_vectors
 from .reweight import sort_core_sg
+
+# PyNNDescent imports Numba and can add a substantial one-time startup cost.
+# Keep it lazy so the exact CORE-SG path does not pay for an optional SCORE-SG
+# backend that it never uses.
+NNDescent = None
+_PYNNDESCENT_IMPORT_ERROR = None
 
 
 def _resolve_metric(metric: str) -> str:
@@ -31,12 +29,23 @@ def _metric_kwargs(metric: str, p: int) -> dict[str, Any]:
 
 
 def _get_pynndescent_class():
+    global NNDescent, _PYNNDESCENT_IMPORT_ERROR
+
     if NNDescent is None:
-        raise ImportError(
-            "score-sg requires the 'pynndescent' dependency. "
-            "Install the project with PyNNDescent available to use "
-            "algorithm='score-sg'."
-        ) from _PYNNDESCENT_IMPORT_ERROR
+        if _PYNNDESCENT_IMPORT_ERROR is None:
+            try:
+                from pynndescent import NNDescent as pynndescent_class
+            except ImportError as exc:
+                _PYNNDESCENT_IMPORT_ERROR = exc
+            else:
+                NNDescent = pynndescent_class
+
+        if NNDescent is None:
+            raise ImportError(
+                "score-sg requires the 'pynndescent' dependency. "
+                "Install the project with PyNNDescent available to use "
+                "algorithm='score-sg'."
+            ) from _PYNNDESCENT_IMPORT_ERROR
     return NNDescent
 
 

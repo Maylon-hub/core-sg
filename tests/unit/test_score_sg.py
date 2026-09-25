@@ -33,6 +33,22 @@ def score_sg_module(fake_hdbscan_modules):
 
 
 class TestScoreSGUtilities:
+    def test_import_does_not_load_pynndescent_eagerly(
+        self, score_sg_module, monkeypatch
+    ):
+        imported_names = []
+        real_import = builtins.__import__
+
+        def tracking_import(name, globals=None, locals=None, fromlist=(), level=0):
+            imported_names.append(name)
+            return real_import(name, globals, locals, fromlist, level)
+
+        monkeypatch.setattr(builtins, "__import__", tracking_import)
+        importlib.reload(score_sg_module)
+
+        assert score_sg_module.NNDescent is None
+        assert "pynndescent" not in imported_names
+
     def test_metric_resolution_and_kwargs_helpers(self, score_sg_module):
         assert score_sg_module._resolve_metric("arccos") == "cosine"
         assert score_sg_module._metric_kwargs("minkowski", 3) == {"p": 3}

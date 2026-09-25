@@ -564,6 +564,45 @@ class TestCoreSGHierarchy:
                 core_sg, metric_edges, core_k_list, n_nodes=2, k_max=2, k=1
             )
 
+    def test_standalone_mst_keeps_complete_k_max_support_graph(
+        self, core_sg_module, monkeypatch
+    ):
+        support_graph = np.column_stack(
+            [
+                np.zeros(11),
+                np.ones(11),
+                np.full(11, -1.0),
+            ]
+        )
+        captured = {}
+
+        def fake_reweight(*, core_sg, **kwargs):
+            del kwargs
+            captured["edge_count"] = core_sg.shape[0]
+            return np.array([[0.0, 1.0, 1.0], [1.0, 2.0, 1.0]])
+
+        def fake_kruskal(edges, n_nodes):
+            del edges, n_nodes
+            return np.rec.fromarrays(
+                [[0, 1], [1, 2], [1.0, 1.0]],
+                names=["u", "v", "distance"],
+            )
+
+        monkeypatch.setattr(
+            core_sg_module, "reweight_core_sg_mutual_reachability", fake_reweight
+        )
+        monkeypatch.setattr(core_sg_module, "kruskal_mst", fake_kruskal)
+
+        core_sg_module.mst_from_core_sg(
+            support_graph,
+            np.array([[1.0, 0.0, 1.0]]),
+            np.ones((3, 3)),
+            n_nodes=3,
+            k=2,
+        )
+
+        assert captured["edge_count"] == support_graph.shape[0]
+
     def test_extract_hierarchy_rejects_invalid_k_values(self, fitted_obj):
         obj, _ = fitted_obj
 

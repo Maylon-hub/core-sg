@@ -19,6 +19,19 @@ from hdbscan.hdbscan_ import _tree_to_labels
 from hdbscan.plots import CondensedTree, MinimumSpanningTree, SingleLinkageTree
 
 
+def fit_euclidean_reference(X: np.ndarray, *, k_max: int) -> Any:
+    """Fit the native HDBSCAN reference used to seed Core-SG."""
+    clusterer = hdbscan.HDBSCAN(
+        min_cluster_size=k_max,
+        min_samples=k_max,
+        metric="euclidean",
+        core_dist_n_jobs=1,
+        gen_min_span_tree=True,
+        approx_min_span_tree=False,
+    )
+    return clusterer.fit(X)
+
+
 def reference_mst_original_distance(
     D: np.ndarray,
     *,
