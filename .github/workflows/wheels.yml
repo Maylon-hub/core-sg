@@ -1,8 +1,9 @@
 name: Build and Publish Wheels
 
 on:
-  # Legacy/manual wheel build. Tagged releases are handled exclusively by
-  # release.yml so the same version is never uploaded twice to TestPyPI.
+  push:
+    tags:
+      - "v*rc*"
   workflow_dispatch:
 
 jobs:

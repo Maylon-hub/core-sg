@@ -23,7 +23,7 @@ from .hdbscan_adapter import (
 from .knn import knn_from_precomputed
 from .mst_kruskal import kruskal_mst
 from .noise_handler import build_noise_handler
-from .reweight import reweight_core_sg_mutual_reachability
+from .reweight import reweight_core_sg_mutual_reachability, sort_core_sg  # noqa: F401
 from .score_sg import build_score_sg_from_data, is_graph_connected
 
 ProgressCallback = Callable[[str, float, dict[str, Any]], None]
