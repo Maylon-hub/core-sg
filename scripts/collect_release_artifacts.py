@@ -30,7 +30,9 @@ def validate_tags(tags, project_name):
         assert python == abi == "cp311", "Only qualified CPython 3.11 wheels"
         if platform == "win_amd64":
             families.add("Windows")
-        elif re.fullmatch(r"manylinux_(?:[0-9]+_?)+_x86_64", platform):
+        # auditwheel can add the manylinux2014 alias to a PEP 600 wheel.
+        # Accept that standard x86-64 alias, not arbitrary Linux platforms.
+        elif platform == "manylinux2014_x86_64" or re.fullmatch(r"manylinux_(?:[0-9]+_?)+_x86_64", platform):
             families.add("Linux")
         else:
             raise AssertionError("Unqualified RC wheel platform: " + platform)

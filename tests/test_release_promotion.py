@@ -23,10 +23,20 @@ LABELS = ("wheel-full-suite", "sdist-full-suite", "wheel-smoke",
     "cp311-cp311-macosx_10_9_x86_64", "cp311-cp311-win32",
     "cp312-cp312-win_amd64", "cp311-cp311-linux_x86_64",
     "cp311-cp311-manylinux_2_28_aarch64",
+    "cp311-cp311-manylinux2014_aarch64", "cp311-cp311-manylinux2099_x86_64",
 ])
 def test_reject_unqualified_wheel_tags(tag):
     with pytest.raises(AssertionError):
         promotion.validate_tags([tag], "core-sg-mustache")
+
+
+def test_accept_auditwheel_manylinux_compatibility_aliases():
+    tags = [
+        "cp311-cp311-manylinux2014_x86_64",
+        "cp311-cp311-manylinux_2_17_x86_64",
+        "cp311-cp311-manylinux_2_28_x86_64",
+    ]
+    assert promotion.validate_tags(tags, "core-sg-mustache") == "Linux"
 
 
 @pytest.fixture
