@@ -89,7 +89,9 @@ def build_core_sg_from_data(
         dists_all, idxs_all = tree.query(X, k=k_max + 1)
         idxs_graph = idxs_all[:, 1:].astype(np.int64)
         dists_graph = dists_all[:, 1:].astype(np.float64)
-        core_k_list = dists_graph[:, :k_max]
+        # The reference convention counts the query point itself. Keep this
+        # identical to the dense path (k=2 means the first other neighbour).
+        core_k_list = np.column_stack((np.zeros(n), dists_graph[:, :k_max - 1]))
 
         metric_edges, knng_to_insert = build_knng_vectors(
             idxs_graph,
@@ -101,7 +103,10 @@ def build_core_sg_from_data(
         clusterer = fit_euclidean_reference(X, k_max=k_max)
         hdb_obj = clusterer
         mst_orig = np.asarray(clusterer._min_spanning_tree, dtype=np.float64)
-        D = np.zeros((n, n), dtype=np.float64)
+        # D is also exposed to downstream callers as the distance matrix. A
+        # zero placeholder silently corrupted both that API and added MST edges.
+        D = np.ascontiguousarray(pairwise_distances(X, metric="euclidean"), dtype=pairwise_dtype)
+        np.fill_diagonal(D, 0.0)
     else:
         if metric == "minkowski":
             D = pairwise_distances(X, metric=metric, p=p)
