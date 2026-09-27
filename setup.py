@@ -31,6 +31,7 @@ setup(
         },
     ),
     package_data={
-        "core_sg": ["*.pyd", "*.py", "*.pyx"],
+        # Extensions are built above, never swept up from another interpreter.
+        "core_sg": ["*.pyx"],
     },
 )
