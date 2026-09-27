@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+type: software
+message: "Cite this integration-fork release AND the CORE-SG method paper. Proposed authorship requires approval; see AUTHORS.md and AUTHORSHIP_APPROVAL_REQUIRED.md."
+title: "CORE-SG MustaCHE integration fork"
+version: 0.4.5rc3
+authors:
+  - name: "Midas Core-SG Team"
+  - family-names: "de Melo"
+    given-names: "Maylon Martins"
+repository-code: "https://github.com/Maylon-hub/core-sg"
+license: BSD-3-Clause
+references:
+  - type: conference-paper
+    title: "CORE-SG: Efficient Computation of Multiple MSTs for Density-Based Methods"
+    authors:
+      - family-names: "Araujo Neto"
+        given-names: "Antonio Cavalcante"
+      - family-names: "Naldi"
+        given-names: "Murilo Coelho"
+      - family-names: "Campello"
+        given-names: "Ricardo J. G. B."
+      - family-names: "Sander"
+        given-names: "Jorg"
+    year: 2022
+    collection-title: "2022 IEEE 38th International Conference on Data Engineering (ICDE)"
+    start: 951
+    end: 964
+    doi: "10.1109/ICDE53745.2022.00076"
