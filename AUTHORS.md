@@ -11,14 +11,18 @@ and Gab0410, and integration contributions under Maylon Martins de Melo and
 Maylon. People must confirm their aliases; commit counts are not author ranking.
 Existing copyright and HDBSCAN third-party notices remain unchanged.
 
-The `core-sg-mustache` fork includes Maylon's integration/reengineering and
-reusable-support corrections. Its proposed software citation names the existing
-team plus Maylon, separately from the method paper. This fork is not asserted
-to be MIDAS's canonical release. Upstream: https://github.com/midas-core-sg/core-sg.
+The `core-sg-mustache` fork includes Maylon's integration/modernization,
+reusable-support corrections, tests and packaging work. Maylon is credited as
+a **contributor to this version**, not added as a CORE-SG software author.
+Gabriel Orlando's existing implementation credit above and the established
+Midas Core-SG Team author metadata remain unchanged. Murilo Coelho Naldi's
+scientific authorship of the CORE-SG paper and role in supervising the
+MustaCHE research are not converted into new Python software authorship.
+UFSCar's Departamento de Computação is Maylon's confirmed affiliation; MIDAS
+is a complementary research group for the participants where appropriate.
 
-## Approval before publication
-
-The advisor and MIDAS maintainers must confirm individual software authors,
-names/aliases, order, affiliations, ORCIDs, ownership and the citation title.
-The collective-based CFF is a proposal, not a final authorship agreement.
-No release date or DOI is fabricated for the unissued RC.
+The software CFF retains the established team author. The CORE-SG method paper
+is a separate citation. This fork is not asserted to be MIDAS's canonical
+release; upstream is https://github.com/midas-core-sg/core-sg. Initial
+publication remains on `Maylon-hub/core-sg`; MIDAS integration is future work.
+No ORCID, DOI, new individual author order or release date is fabricated.

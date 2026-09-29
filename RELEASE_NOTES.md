@@ -2,6 +2,12 @@
 
 Unpublished RC proposal; companion of `mustache-core==0.3.0rc3`.
 
+For this personal-fork RC, the software citation retains the existing Midas
+Core-SG Team authorship and Gabriel Orlando's implementation credit. Maylon
+Martins de Melo is credited as a contributor to integration, support reuse,
+tests and packaging, not added as a CORE-SG software author. The scientific
+paper remains a separate reference.
+
 ## Official RC platform policy
 
 Windows x86-64 and Linux x86-64 (glibc >= 2.28), **CPython 3.11 only**.

@@ -1,29 +1,30 @@
-# Authorship approval required
+# Authorship decisions for this release candidate
 
-Proposal for core-sg-mustache 0.4.5rc3; confirm with Murilo/MIDAS, Maylon and
-the original Python maintainers before software publication.
+The project owner approved retaining the existing CORE-SG authorship and
+Gabriel Orlando credit, while listing Maylon Martins de Melo only as a
+contributor to this integration release. Murilo Coelho Naldi retains his
+established scientific/institutional role without invented software authorship.
+No further authorship decision blocks this personal-fork RC. MIDAS integration
+and any future institutional citation policy remain separate decisions.
 
-| Role | Evidence / attribution | Decision still required |
+Decision for the `core-sg-mustache` 0.4.5rc3 personal fork:
+
+| Role | Evidence / attribution | RC decision |
 |---|---|---|
-| Original scientific work | Antonio Cavalcante Araujo Neto, Murilo Coelho Naldi, Ricardo J. G. B. Campello, Jorg Sander; CORE-SG paper, ICDE 2022 | Preserve the scientific reference; it does not assign implementation authorship |
-| Original Python implementation | Existing metadata/copyright: Midas Core-SG Team; Git records Gabriel Orlando / Gab0410 | Confirm individual identity/aliases and contributor list with maintainers; paper authors are not automatically Python authors |
-| Later contributions | Git records Maylon Martins de Melo / Maylon and upstream contributors | Confirm identities, contribution descriptions and software citation order; commit counts are not author ranking |
-| Integration/modernization in this project | Maylon's MustaCHE integration, full k_max support preservation, repeated extraction/distance compatibility fixes, tests and release qualification | Confirm acknowledgement/authorship wording and distinction from canonical upstream releases |
-| Institutional supervision/ownership | Murilo is the stated MustaCHE IC advisor; upstream repository belongs to MIDAS | Confirm maintainer, institutional owner and canonical release policy; no transfer or institutional appointment is implied |
+| Original scientific work | Antonio Cavalcante Araujo Neto, Murilo Coelho Naldi, Ricardo J. G. B. Campello, Jorg Sander; CORE-SG paper, ICDE 2022 | Preserve the paper as a separate reference |
+| Original Python implementation | Existing metadata/copyright: Midas Core-SG Team; Git records Gabriel Orlando / Gab0410 | Preserve team authorship and Gabriel's existing credit exactly |
+| Integration/modernization in this project | Maylon's MustaCHE integration, full k_max support preservation, tests and release qualification | List Maylon as a version contributor in AUTHORS.md, not a CORE-SG author |
+| Institutional supervision/ownership | Murilo is a scientific paper author and MustaCHE IC advisor; upstream belongs to MIDAS | Preserve established roles; publish this RC from the personal fork only |
 
-## CITATION.cff fields requiring confirmation
+## CITATION.cff decision
 
-- `authors`: provisional team plus Maylon; confirm collective name, individual
-  names/aliases, list completeness and order.
-- `title`: `CORE-SG MustaCHE integration fork`; confirm its distinction from
-  canonical upstream software and the scientific article.
-- `message`: provisional approval notice; change after decisions are recorded.
-- `repository-code`: personal integration fork; any MIDAS destination requires
-  an authorized ownership/integration decision.
-- Future `orcid`, `affiliation`, `doi`, `date-released`: absent; add only verified
-  values after the corresponding human decision or actual release/deposit.
+- `authors`: existing Midas Core-SG Team only; Maylon is a contributor in
+  AUTHORS.md.
+- `title`: `CORE-SG MustaCHE integration fork`, distinct from the scientific
+  article and upstream's canonical software releases.
+- `repository-code`: personal integration fork for this RC.
+- Future `orcid`, `doi` and `date-released`: absent until verified or issued.
 
 `version: 0.4.5rc3`, software type, license and the original article reference
 are release/citation facts. Existing copyright and HDBSCAN third-party notices
-must remain. No individual name expansion, affiliation, ORCID or author ranking
-is invented here. Approval is required for publication, not for CI execution.
+remain. No individual name expansion, ORCID or author ranking is invented.

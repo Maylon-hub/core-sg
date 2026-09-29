@@ -17,7 +17,6 @@ license = "BSD-3-Clause"
 license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
 authors = [
   { name = "Midas Core-SG Team", email = "gmcorlando@estudante.ufscar.br" },
-  { name = "Maylon Martins de Melo" },
 ]
 keywords = [
   "core-sg",

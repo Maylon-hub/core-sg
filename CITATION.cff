@@ -1,12 +1,10 @@
 cff-version: 1.2.0
 type: software
-message: "Cite this integration-fork release AND the CORE-SG method paper. Proposed authorship requires approval; see AUTHORS.md and AUTHORSHIP_APPROVAL_REQUIRED.md."
+message: "Cite this integration-fork release and the CORE-SG method paper. See AUTHORS.md for individual implementation and contributor credits."
 title: "CORE-SG MustaCHE integration fork"
 version: 0.4.5rc3
 authors:
   - name: "Midas Core-SG Team"
-  - family-names: "de Melo"
-    given-names: "Maylon Martins"
 repository-code: "https://github.com/Maylon-hub/core-sg"
 license: BSD-3-Clause
 references:
