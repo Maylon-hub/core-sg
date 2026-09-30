@@ -39,7 +39,7 @@ In this repository, the dispatch happens in:
 - `CoreSG.fit(...)`
 - `CoreSG._build_by_algorithm(...)`
 
-inside [core_sg.py](/home/gab04/Desktop/core-sg/core_sg/core_sg.py).
+inside [core_sg.py](../core_sg/core_sg.py).
 
 ## 2. High-level flow of `score-sg`
 
@@ -63,8 +63,8 @@ So the important difference from the previous version is:
 
 The main files involved are:
 
-- [core_sg.py](/home/gab04/Desktop/core-sg/core_sg/core_sg.py)
-- [score_sg.py](/home/gab04/Desktop/core-sg/core_sg/score_sg.py)
+- [core_sg.py](../core_sg/core_sg.py)
+- [score_sg.py](../core_sg/score_sg.py)
 
 Responsibilities are split as follows.
 
@@ -101,7 +101,7 @@ The approximate kNN graph is built in:
 
 - `build_approximate_knn_graph(...)`
 
-inside [score_sg.py](/home/gab04/Desktop/core-sg/core_sg/score_sg.py).
+inside [score_sg.py](../core_sg/score_sg.py).
 
 It uses:
 
@@ -413,9 +413,9 @@ The current test suite includes dedicated checks for:
 
 The main files covering this are:
 
-- [tests/unit/test_score_sg.py](/home/gab04/Desktop/core-sg/tests/unit/test_score_sg.py)
-- [tests/unit/test_core_sg_fit.py](/home/gab04/Desktop/core-sg/tests/unit/test_core_sg_fit.py)
-- [tests/integration/test_reference_equivalence.py](/home/gab04/Desktop/core-sg/tests/integration/test_reference_equivalence.py)
+- [tests/unit/test_score_sg.py](../tests/unit/test_score_sg.py)
+- [tests/unit/test_core_sg_fit.py](../tests/unit/test_core_sg_fit.py)
+- [tests/integration/test_reference_equivalence.py](../tests/integration/test_reference_equivalence.py)
 
 ## 17. Practical validation checklist
 
