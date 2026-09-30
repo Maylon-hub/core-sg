@@ -154,7 +154,7 @@ export THREADS=8
 Você JÁ pode rodar um teste rápido:
 
 ```bash
-cd /home/gab04/Desktop/core-sg
+cd /path/to/core-sg
 
 # Prepare environment (if not already done)
 python3.10 -m venv .venv310

@@ -1,7 +1,16 @@
 # Core-SG
 
-[![PyPI version](https://img.shields.io/pypi/v/core-sg.svg)](https://pypi.org/project/core-sg/)
-[![Python versions](https://img.shields.io/pypi/pyversions/core-sg.svg)](https://pypi.org/project/core-sg/)
+This checkout prepares the **unpublished `core-sg-mustache==0.4.5` stable candidate**
+for MustaCHE 0.3.0. The qualified `0.4.5rc3` remains on TestPyPI. Its import
+name remains `core_sg`; do not co-install
+the separate `core-sg` distribution. Native HDBSCAN is pinned to 0.8.44 because
+the hierarchy adapter uses private APIs. See [release notes](RELEASE_NOTES.md),
+[software attribution](AUTHORS.md), [CITATION.cff](CITATION.cff), and
+[dataset provenance](DATASETS.md). The linked MIDAS documentation describes
+upstream; it is not a deployed documentation site for this unpublished fork.
+
+[![PyPI version](https://img.shields.io/pypi/v/core-sg-mustache.svg)](https://pypi.org/project/core-sg-mustache/)
+[![Python versions](https://img.shields.io/pypi/pyversions/core-sg-mustache.svg)](https://pypi.org/project/core-sg-mustache/)
 [![Tests](https://img.shields.io/github/actions/workflow/status/midas-core-sg/core-sg/test.yml?branch=develop&label=tests)](https://github.com/midas-core-sg/core-sg/actions/workflows/test.yml)
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
 
@@ -40,10 +49,10 @@ In practice, Core-SG helps you:
 
 ## Installing
 
-Install from PyPI:
+After a separately authorized stable publication (not available yet):
 
 ```bash
-pip install core-sg
+pip install core-sg-mustache==0.4.5
 ```
 
 Install for local development:
@@ -63,7 +72,7 @@ Dependencies:
 - `numpy>=1.24,<3`
 - `pandas>=2.0`
 - `scikit-learn>=1.3`
-- `hdbscan>=0.8.39`
+- `hdbscan==0.8.44` (qualified private tree API)
 - `pynndescent>=0.5.13`
 
 The package metadata, runtime dependencies, and optional extras are defined in `pyproject.toml`.
@@ -306,6 +315,9 @@ Direct cached wrappers at fit time:
 
 ## Performance (multi-k workflows)
 
+The figures below are historical notebook observations, not rerun measurements
+for 0.4.5. They must not be used as current stable performance evidence.
+
 Core-SG is optimized for repeated `k` analysis, not necessarily for a single one-off run.
 
 In `notebooks/01-HDBSCAN_comparision.ipynb`, for a synthetic setup (`n=5000`, `d=2`, `centers=10`) with repeated evaluations from `k=30` down to `k=10`, cumulative runtime was:
@@ -335,7 +347,12 @@ workloads: at `n=50000`, ScoreSG completes the tested `49`-value workflow in
 
 ## Python version
 
-Core-SG supports Python `>=3.10`.
+This RC declares **CPython 3.11 only** and official platform scope
+**Windows x86-64 / Linux x86-64 (glibc >= 2.28)**. Windows was qualified locally;
+Linux must pass the required artifact CI before publication. **macOS is not
+currently qualified / future work**; this is not an incompatibility claim.
+Python 3.10, 3.12 and 3.13 await separate qualification and are not advertised
+for this RC. cibuildwheel selects only cp311 Windows AMD64 and manylinux x86-64.
 
 ## Help and support
 
@@ -360,6 +377,10 @@ expose HDBSCAN-style hierarchy artifacts. See [`THIRD_PARTY_NOTICES.md`](THIRD_P
 for third-party attribution and the reproduced upstream BSD-3-Clause notice.
 
 ## Citing
+
+Cite the modern integration-fork software using [CITATION.cff](CITATION.cff)
+**and** the original method paper below. The software author list is proposed
+pending maintainer/advisor approval; see [AUTHORS.md](AUTHORS.md).
 
 If Core-SG contributes to your research, publication, or technical results,
 please cite the following paper:

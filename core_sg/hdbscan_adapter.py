@@ -28,6 +28,7 @@ def fit_euclidean_reference(X: np.ndarray, *, k_max: int) -> Any:
         core_dist_n_jobs=1,
         gen_min_span_tree=True,
         approx_min_span_tree=False,
+        match_reference_implementation=True,
     )
     return clusterer.fit(X)
 
