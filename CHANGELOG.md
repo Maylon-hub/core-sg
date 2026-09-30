@@ -1,6 +1,23 @@
 # Changelog
 
-## 0.4.5rc3 — Unreleased
+## 0.4.5 — Stable candidate (unpublished)
+
+- Carry forward the scientifically and functionally qualified `0.4.5rc3`
+  implementation without changing graph construction or extraction algorithms.
+- Reuse one complete `k_max` support graph for multiple smaller `k` MSTs and
+  hierarchies; retain the corrected reference-distance and native-tree behavior.
+- Keep the pinned HDBSCAN private-API compatibility contract and native
+  Cython extensions. Build and qualify wheel/sdist on Windows and Linux x86-64,
+  CPython 3.11 only; macOS remains unqualified.
+- Correct stable version, citation and public Changelog metadata. The previous
+  TestPyPI RC and its tag remain immutable.
+
+Known limitations: dense exact distances require quadratic memory;
+approximate neighbor graphs may disconnect; no unseen-point prediction;
+HDBSCAN private APIs remain pinned to `hdbscan==0.8.44`. No RNG equivalence
+has been demonstrated.
+
+## 0.4.5rc3 — TestPyPI pre-release
 
 - Narrow official RC scope to Windows/Linux x86-64, CPython 3.11;
   produce only win_amd64/manylinux x86-64 wheels. Require fresh wheel/sdist

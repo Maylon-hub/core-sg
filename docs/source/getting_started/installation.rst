@@ -1,11 +1,11 @@
 Installation
 ============
 
-This RC supports CPython ``3.11`` within the Windows/Linux x86-64 platform
-scope. Windows is locally qualified; Linux qualification must pass GitHub
-Actions before publication. Linux wheels target glibc ``>=2.28``. macOS is
-not currently qualified and remains future work, without an incompatibility
-claim. Other Python versions are not advertised by this RC.
+This stable candidate targets CPython ``3.11`` on Windows/Linux x86-64.
+Windows and Linux artifacts must pass their own clean-install qualification
+before publication. Linux wheels target glibc ``>=2.28``. macOS is not
+currently qualified and remains future work, without an incompatibility
+claim. Other Python versions are not advertised by this release.
 
 Runtime dependencies are declared in
 ``pyproject.toml`` and include NumPy, pandas, scikit-learn, HDBSCAN, and
@@ -16,9 +16,9 @@ Install From PyPI
 
 .. code-block:: bash
 
-   pip install core-sg-mustache==0.4.5rc3
+   pip install core-sg-mustache==0.4.5
 
-This candidate is not published yet. For local qualification install the built
+This stable candidate is not published yet. For local qualification install the built
 wheel instead. Do not co-install the separate ``core-sg`` distribution because
 both use the ``core_sg`` import namespace. The linked MIDAS site describes upstream.
 

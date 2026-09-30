@@ -2,7 +2,7 @@ cff-version: 1.2.0
 type: software
 message: "Cite this integration-fork release and the CORE-SG method paper. See AUTHORS.md for individual implementation and contributor credits."
 title: "CORE-SG MustaCHE integration fork"
-version: 0.4.5rc3
+version: 0.4.5
 authors:
   - name: "Midas Core-SG Team"
 repository-code: "https://github.com/Maylon-hub/core-sg"

@@ -1,7 +1,8 @@
 # Core-SG
 
-This checkout prepares the **unpublished `core-sg-mustache==0.4.5rc3`** integration
-fork for MustaCHE 0.3.0rc3. Its import name remains `core_sg`; do not co-install
+This checkout prepares the **unpublished `core-sg-mustache==0.4.5` stable candidate**
+for MustaCHE 0.3.0. The qualified `0.4.5rc3` remains on TestPyPI. Its import
+name remains `core_sg`; do not co-install
 the separate `core-sg` distribution. Native HDBSCAN is pinned to 0.8.44 because
 the hierarchy adapter uses private APIs. See [release notes](RELEASE_NOTES.md),
 [software attribution](AUTHORS.md), [CITATION.cff](CITATION.cff), and
@@ -48,10 +49,10 @@ In practice, Core-SG helps you:
 
 ## Installing
 
-After a separately authorized publication (not available for this RC yet):
+After a separately authorized stable publication (not available yet):
 
 ```bash
-pip install core-sg-mustache==0.4.5rc3
+pip install core-sg-mustache==0.4.5
 ```
 
 Install for local development:
@@ -315,7 +316,7 @@ Direct cached wrappers at fit time:
 ## Performance (multi-k workflows)
 
 The figures below are historical notebook observations, not rerun measurements
-for 0.4.5rc3. They must not be used as current RC performance evidence.
+for 0.4.5. They must not be used as current stable performance evidence.
 
 Core-SG is optimized for repeated `k` analysis, not necessarily for a single one-off run.
 

@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "core-sg-mustache"
-version = "0.4.5rc3"
+version = "0.4.5"
 description = "Core-SG graph construction and MST extraction utilities for HDBSCAN-style clustering."
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
@@ -79,7 +79,7 @@ docs = [
 Source = "https://github.com/Maylon-hub/core-sg"
 Issues = "https://github.com/Maylon-hub/core-sg/issues"
 Documentation = "https://midas-core-sg.github.io/core-sg/"
-Changelog = "https://github.com/Maylon-hub/core-sg/blob/develop/CHANGELOG.md"
+Changelog = "https://github.com/Maylon-hub/core-sg/blob/release/core-sg-0.4.5/CHANGELOG.md"
 
 [tool.setuptools]
 include-package-data = true

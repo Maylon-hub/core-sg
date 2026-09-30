@@ -1,48 +1,45 @@
-# CORE-SG MustaCHE integration fork 0.4.5rc3
+# CORE-SG MustaCHE integration fork 0.4.5
 
-Unpublished RC proposal; companion of `mustache-core==0.3.0rc3`.
+Unpublished stable candidate paired with `mustache-core==0.3.0`. The
+`0.4.5rc3` TestPyPI release remains the immutable pre-release record. This
+candidate changes version/release metadata, not scientific algorithms.
 
-For this personal-fork RC, the software citation retains the existing Midas
-Core-SG Team authorship and Gabriel Orlando's implementation credit. Maylon
-Martins de Melo is credited as a contributor to integration, support reuse,
-tests and packaging, not added as a CORE-SG software author. The scientific
-paper remains a separate reference.
+CORE-SG constructs one complete support graph at `k_max` and reuses it to
+extract MSTs and hierarchies for smaller `k`. Native Cython Kruskal and
+reweighting extensions ship in the wheels. Corrections to support reuse,
+distance/reference compatibility and packaging were tested in the RC and
+must be requalified in final stable artifacts. SCORE-SG remains a separate
+approximate path.
 
-## Official RC platform policy
+## Supported platforms
 
 Windows x86-64 and Linux x86-64 (glibc >= 2.28), **CPython 3.11 only**.
-Publish only cp311 Windows AMD64 and manylinux x86-64 native wheels, plus sdist.
-Windows has local evidence; Linux requires a real GitHub Actions pass.
-macOS is NOT QUALIFIED / FUTURE WORK and is not required for this RC. This does
-not claim macOS incompatibility. Python 3.10/3.12/3.13 require later qualification.
-
-## Scientific scope
-
-Build support at `k_max`, extract smaller-k MSTs/hierarchies without rebuilding.
-The implementation uses HDBSCAN components. Targeted reference tests are not
-universal proof of equality to RNG, every HDBSCAN tie case, or the original
-paper's implementation. SCORE-SG remains a separate approximate path.
+The release requires new Windows/Linux wheel and sdist qualification; an RC
+pass alone is not final-artifact evidence. macOS and other Python versions are
+not qualified, not declared incompatible.
 
 ## Known limitations
 
-Exact dense distances require quadratic memory. Approximate neighbor graphs
-may be disconnected. Prediction for unseen points is not implemented.
-Private `hdbscan.hdbscan_._tree_to_labels`, linkage and plotting APIs may break
-upstream: this RC pins `hdbscan==0.8.44`. Scikit-learn HDBSCAN is not the owner
-of that private API. Future upgrades require real-dependency compatibility tests.
-Local qualification does not automatically validate Linux/macOS.
+Exact dense distances use quadratic memory. Approximate neighbor graphs may
+disconnect. Prediction for unseen points is not implemented. The private
+`hdbscan.hdbscan_._tree_to_labels` contract is pinned to `hdbscan==0.8.44`;
+future upgrades require compatibility tests. Targeted reference tests are not
+proof of equivalence to RNG, every HDBSCAN tie case or the original paper's
+implementation. Historical benchmarks are not fresh stable-release results.
 
-## Backward compatibility
+## Backward compatibility and breaking changes
 
-`core_sg`, `CoreSG`, `CoreSGClusterer` and extraction signatures remain.
-The distribution is **core-sg-mustache**, not the separate `core-sg` package;
-do not install both into one environment (shared import namespace).
-New `__version__` reports installed metadata. Synthetic tests are distributed;
-raw datasets and benchmark outputs are excluded from wheel/sdist.
+`core_sg`, `CoreSG`, `CoreSGClusterer` and extraction signatures remain. No
+new signature removal is intended relative to rc3. The distribution is
+`core-sg-mustache`, not the separate `core-sg` package; do not co-install both
+because they share the import namespace. The qualified Python restriction
+`>=3.11,<3.12` and exact `hdbscan==0.8.44` pin remain. Corrections already
+present in rc3 may change outputs relative to older, incorrect versions.
 
-## Breaking changes
+## Attribution
 
-No intentional signature removal. The native HDBSCAN dependency is now exact.
-Python metadata is deliberately narrowed to >=3.11,<3.12 for this RC.
-Corrected support/distance handling can change previously incorrect outputs.
-Historical benchmark numbers are not fresh RC performance claims.
+The software citation retains the Midas Core-SG Team authorship and Gabriel
+Orlando's implementation credit. Maylon Martins de Melo is credited in
+`AUTHORS.md` as a contributor to integration, support reuse, tests and
+packaging, not added as a CORE-SG software author. The method paper remains
+a separate reference.
