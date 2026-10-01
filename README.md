@@ -1,17 +1,18 @@
 # Core-SG
 
-This checkout prepares the **unpublished `core-sg-mustache==0.4.5` stable candidate**
-for MustaCHE 0.3.0. The qualified `0.4.5rc3` remains on TestPyPI. Its import
-name remains `core_sg`; do not co-install
-the separate `core-sg` distribution. Native HDBSCAN is pinned to 0.8.44 because
+The stable **`core-sg-mustache==0.4.5`** distribution is available on
+[TestPyPI](https://test.pypi.org/project/core-sg-mustache/0.4.5/), paired with
+MustaCHE 0.3.0. It has **not** been published to official PyPI. Its import
+name is `core_sg`; do not co-install the separate `core-sg` distribution,
+which uses the same import namespace. HDBSCAN is pinned to 0.8.44 because
 the hierarchy adapter uses private APIs. See [release notes](RELEASE_NOTES.md),
 [software attribution](AUTHORS.md), [CITATION.cff](CITATION.cff), and
-[dataset provenance](DATASETS.md). The linked MIDAS documentation describes
-upstream; it is not a deployed documentation site for this unpublished fork.
+[dataset provenance](DATASETS.md). The [MIDAS upstream project](https://github.com/midas-core-sg/core-sg)
+is distinct from this personal integration fork; institutional integration is
+deferred.
 
-[![PyPI version](https://img.shields.io/pypi/v/core-sg-mustache.svg)](https://pypi.org/project/core-sg-mustache/)
-[![Python versions](https://img.shields.io/pypi/pyversions/core-sg-mustache.svg)](https://pypi.org/project/core-sg-mustache/)
-[![Tests](https://img.shields.io/github/actions/workflow/status/midas-core-sg/core-sg/test.yml?branch=develop&label=tests)](https://github.com/midas-core-sg/core-sg/actions/workflows/test.yml)
+[![TestPyPI version](https://img.shields.io/badge/TestPyPI-0.4.5-blue)](https://test.pypi.org/project/core-sg-mustache/0.4.5/)
+[![Tests](https://img.shields.io/github/actions/workflow/status/Maylon-hub/core-sg/test.yml?branch=main&label=tests)](https://github.com/Maylon-hub/core-sg/actions/workflows/test.yml)
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
 
 Core-SG - Core Support Graph for efficient computation of multiple MSTs and HDBSCAN-style hierarchy outputs over varying values of `k`. The recommended public workflow is the scikit-learn-style `CoreSGClusterer`, which builds reusable graph support at `k_max` and then extracts hierarchy artifacts for smaller values of `k <= k_max` without rebuilding the full structure each time.
@@ -34,7 +35,11 @@ Based on the papers:
 >R. Campello, D. Moulavi, and J. Sander. Density-Based Clustering Based on Hierarchical Density Estimates. In: Advances in Knowledge Discovery and Data Mining, Springer, pp. 160-172. 2013.
 
 
-Documentation and project overview are available at https://midas-core-sg.github.io/core-sg/. Notebooks comparing Core-SG to HDBSCAN and illustrating the intended multi-`k` workflow are available in [`notebooks/`](notebooks/).
+The [MIDAS documentation](https://midas-core-sg.github.io/core-sg/) describes
+the upstream project, not a deployed site for this fork. Notebooks comparing
+Core-SG to HDBSCAN and illustrating the multi-`k` workflow are available in
+[`notebooks/`](notebooks/); their historical measurements are not fresh 0.4.5
+benchmarks.
 
 ## What Core-SG is for
 
@@ -49,11 +54,19 @@ In practice, Core-SG helps you:
 
 ## Installing
 
-After a separately authorized stable publication (not available yet):
+For the qualified Windows x86-64 or Linux x86-64 CPython 3.11 release, create
+an isolated environment and install the stable package from **TestPyPI**:
 
 ```bash
-pip install core-sg-mustache==0.4.5
+python -m pip install --extra-index-url https://test.pypi.org/simple/ core-sg-mustache==0.4.5
 ```
+
+This convenience command lets pip consider both official PyPI and TestPyPI for
+dependency resolution. For source-isolated reproduction, install runtime
+dependencies from official PyPI and the exact CORE-SG wheel from TestPyPI
+separately with `--no-deps`; record the wheel hash and run `python -m pip check`.
+The package metadata resolves HDBSCAN and the other runtime dependencies for
+the normal command; they do not need separate installation.
 
 Install for local development:
 
@@ -327,13 +340,14 @@ In `notebooks/01-HDBSCAN_comparision.ipynb`, for a synthetic setup (`n=5000`, `d
 
 This notebook demonstrates the intended tradeoff: higher upfront cost at `k_max`, lower cumulative cost when reusing across multiple smaller `k` values.
 
-For larger sample sizes, prefer the approximate `algorithm="score-sg"` path.
-The exact `algorithm="core-sg"` path still relies on dense pairwise distance
-information and can become constrained by `n_samples`. The current ScoreSG
-benchmarks show substantially better cumulative runtime in repeated multi-`k`
-workloads: at `n=50000`, ScoreSG completes the tested `49`-value workflow in
-`224.36 s`, compared with `525.45 s` for optimized exact CoreSG and
-`1342.44 s` for optimized HDBSCAN `best`.
+For larger sample sizes, consider the approximate `algorithm="score-sg"` path
+when its approximation is acceptable. The exact `algorithm="core-sg"` path
+still relies on dense pairwise distances and can be constrained by
+`n_samples`. A [historical recorded experiment](benchmarking/run_time/reports/academic_performance_report.md)
+at `n=50000` and 49 tested `k` values reported `224.36 s` for ScoreSG,
+`525.45 s` for optimized exact CoreSG and `1342.44 s` for optimized HDBSCAN
+`best`. These are observations under that report's workload, not a universal
+speedup or a fresh benchmark of the stable 0.4.5 distribution.
 
 ## Known limitations
 
@@ -347,17 +361,17 @@ workloads: at `n=50000`, ScoreSG completes the tested `49`-value workflow in
 
 ## Python version
 
-This RC declares **CPython 3.11 only** and official platform scope
-**Windows x86-64 / Linux x86-64 (glibc >= 2.28)**. Windows was qualified locally;
-Linux must pass the required artifact CI before publication. **macOS is not
-currently qualified / future work**; this is not an incompatibility claim.
-Python 3.10, 3.12 and 3.13 await separate qualification and are not advertised
-for this RC. cibuildwheel selects only cp311 Windows AMD64 and manylinux x86-64.
+Version 0.4.5 is qualified for **CPython 3.11** on **Windows x86-64 and Linux
+x86-64 (glibc >= 2.28)**. Both platforms passed artifact qualification.
+**macOS is not currently qualified / future work**; this is not an
+incompatibility claim. Python 3.10, 3.12 and 3.13 are not advertised as
+qualified. The distributed wheels target cp311 Windows AMD64 and manylinux
+x86-64.
 
 ## Help and support
 
-- Documentation and project overview: https://midas-core-sg.github.io/core-sg/
-- Issues: https://github.com/midas-core-sg/core-sg/issues
+- Source and issues for this fork: https://github.com/Maylon-hub/core-sg
+- Upstream MIDAS documentation: https://midas-core-sg.github.io/core-sg/
 
 ## Contributing
 

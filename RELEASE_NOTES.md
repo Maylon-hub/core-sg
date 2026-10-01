@@ -1,21 +1,23 @@
 # CORE-SG MustaCHE integration fork 0.4.5
 
-Unpublished stable candidate paired with `mustache-core==0.3.0`. The
-`0.4.5rc3` TestPyPI release remains the immutable pre-release record. This
-candidate changes version/release metadata, not scientific algorithms.
+Stable `core-sg-mustache==0.4.5` is published on TestPyPI and paired with
+`mustache-core==0.3.0`. Official PyPI publication is deferred. The historical
+`0.4.5rc3` TestPyPI release remains an immutable pre-release record. The stable
+release changes version/release metadata relative to rc3, not scientific
+algorithms.
 
 CORE-SG constructs one complete support graph at `k_max` and reuses it to
 extract MSTs and hierarchies for smaller `k`. Native Cython Kruskal and
 reweighting extensions ship in the wheels. Corrections to support reuse,
 distance/reference compatibility and packaging were tested in the RC and
-must be requalified in final stable artifacts. SCORE-SG remains a separate
+requalified in the final stable artifacts. SCORE-SG remains a separate
 approximate path.
 
 ## Supported platforms
 
 Windows x86-64 and Linux x86-64 (glibc >= 2.28), **CPython 3.11 only**.
-The release requires new Windows/Linux wheel and sdist qualification; an RC
-pass alone is not final-artifact evidence. macOS and other Python versions are
+The stable Windows/Linux wheel and sdist paths passed qualification; an RC
+pass alone would not be final-artifact evidence. macOS and other Python versions are
 not qualified, not declared incompatible.
 
 ## Known limitations

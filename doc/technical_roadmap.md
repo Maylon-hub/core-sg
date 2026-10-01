@@ -32,9 +32,13 @@ In the repository notebook `notebooks/01-HDBSCAN_comparision.ipynb`, a synthetic
   - Core-SG: **9.76 s**
   - HDBSCAN: **32.44 s**
 
-That notebook therefore shows a cumulative speedup of about **3.3×** for a multi-`k` workflow.
+That historical notebook reports a cumulative time ratio of about **3.3×** for
+its synthetic multi-`k` workflow. It was not rerun as a benchmark of the
+stable 0.4.5 distribution, and its result is not a general performance claim.
 
-> Practical takeaway: if you only need one clustering result for one value of `k`, plain HDBSCAN may be enough. If you need to inspect or compare many `k` values, Core-SG becomes much more attractive.
+> Practical takeaway: if you only need one clustering result for one value of
+> `k`, plain HDBSCAN may be simpler. For several `k` values, CORE-SG can reuse
+> support; evaluate the total workload on your own dataset and metric.
 
 ## When to use Core-SG
 
